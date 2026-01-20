@@ -1,0 +1,25 @@
+# Entorno virtual
+.venv/
+env/
+venv/
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# Base de datos local (SQLite)
+db.sqlite3
+*.sqlite3
+
+# Archivos específicos de PyCharm / JetBrains IDE
+.idea/
+
+# Media y archivos estáticos generados (pueden ser grandes)
+media/
+static_collected/
+
+# Logs y otros temporales
+*.log
+tmp/
