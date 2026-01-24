@@ -45,7 +45,7 @@ jobs:
           DJANGO_SETTINGS_MODULE: "mi_proyecto.settings"
 
       - name: Run BDD Tests (Behave)
-        run: python manage.py behave --noinput
+        run: python manage.py behave tests/features --noinput
         env:
           DEBUG: "False"
           SECRET_KEY: "ci-secret-key"
