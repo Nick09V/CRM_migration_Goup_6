@@ -1,3 +1,4 @@
 Django>= 6.0.1
 behave-django
 selenium
+Faker>=24.0.0
