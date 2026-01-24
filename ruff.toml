@@ -1,0 +1,21 @@
+
+line-length = 120
+
+exclude = [
+    ".git",
+    "migrations",
+    "__pycache__",
+    "env",
+    "venv",
+]
+
+[lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+"tests/features/steps/*.py" = [
+    "F403",
+    "F405",
+    "F811",
+]
