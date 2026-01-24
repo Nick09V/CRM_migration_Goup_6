@@ -5,27 +5,17 @@
 @documentos
 Característica: Registro de requisitos migratorios
   Como agente de migración
-  Quiero registrar los requisitos del solicitante
-  Para iniciar su proceso migratorio
+  Quiero asignar los requisitos del solicitante
+  Para monitorear su proceso migratorio
 
 
-  Escenario: Registro exitoso de requisitos migratorios
-    Dado que el solicitante tiene una cita pendiente
-    Cuando el agente registra el tipo de visa
-      Y registra la lista de requisitos
-    Entonces el sistema guarda los requisitos
-      Y la cita queda marcada como completada
+  Esquema del escenario: Registro de requisitos migratorios según tipo de visa
+    Dado que el agente ha reigstrado que el cliente necesita la visa <tipo_visa>
+    Entonces se asignan los siguientes requisitos al cliente "<requisitos>"
+    Y los documentos quedan como pendientes por subir
 
-
-  Escenario: Registro incompleto de requisitos
-    Dado que el solicitante tiene una cita pendiente
-    Cuando el agente no registra todos los requisitos obligatorios
-    Entonces el sistema rechaza el registro
-      Y muestra los requisitos faltantes
-
-
-  Escenario: Registro sin cita asociada
-    Dado que el solicitante no tiene una cita pendiente
-    Cuando el agente intenta registrar requisitos
-    Entonces el sistema rechaza la acción
-      Y notifica que no existe una cita válida
+    Ejemplos:
+      | tipo_visa   | requisitos                                                          |
+      | estudiantil | ci, carta aceptación, solvencia económica, certificado idioma       |
+      | trabajo     | ci, oferta laboral, experiencia, antecedentes, pruebas calificación |
+      | residencial | ci, sustento económico, seguro médico, acreditación arraigo         |

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -74,12 +75,36 @@ WSGI_APPLICATION = 'mi_proyecto.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+if DATABASE_URL:
+    # Puerta futura: permitir configuración alternativa (PostgreSQL) vía DATABASE_URL
+    # Ejemplo esperado: postgres://USER:PASSWORD@HOST:PORT/NAME
+    # No se activa ahora; solo si está definida en entorno.
+    from urllib.parse import urlparse
+    parsed = urlparse(DATABASE_URL)
+    ENGINE_MAP = {
+        'postgres': 'django.db.backends.postgresql',
+        'postgresql': 'django.db.backends.postgresql',
     }
-}
+    DB_ENGINE = ENGINE_MAP.get(parsed.scheme, 'django.db.backends.sqlite3')
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': parsed.path[1:] if DB_ENGINE.startswith('django.db.backends.postgresql') else str(BASE_DIR / 'db.sqlite3'),
+            'USER': parsed.username or '',
+            'PASSWORD': parsed.password or '',
+            'HOST': parsed.hostname or '',
+            'PORT': parsed.port or '',
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
