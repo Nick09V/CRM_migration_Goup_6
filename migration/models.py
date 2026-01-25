@@ -10,12 +10,63 @@ DURACION_CITA_HORAS = 1
 MAXIMO_SEMANAS_ANTICIPACION = 2
 DIAS_LABORALES = [0, 1, 2, 3, 4, 5]  # Lunes a Sábado
 
+# Tipos de visa soportados
+TIPO_VISA_ESTUDIANTIL = "estudiantil"
+TIPO_VISA_TRABAJO = "trabajo"
+TIPO_VISA_RESIDENCIAL = "residencial"
+TIPO_VISA_TURISTA = "turista"
+
+TIPOS_VISA = (
+    (TIPO_VISA_ESTUDIANTIL, "Estudiantil"),
+    (TIPO_VISA_TRABAJO, "Trabajo"),
+    (TIPO_VISA_RESIDENCIAL, "Residencial"),
+    (TIPO_VISA_TURISTA, "Turista"),
+)
+
+# Requisitos por tipo de visa
+REQUISITOS_POR_VISA = {
+    TIPO_VISA_ESTUDIANTIL: ["ci", "carta aceptación", "solvencia económica", "certificado idioma"],
+    TIPO_VISA_TRABAJO: ["ci", "oferta laboral", "experiencia", "antecedentes", "pruebas calificación"],
+    TIPO_VISA_RESIDENCIAL: ["ci", "sustento económico", "seguro médico", "acreditación arraigo"],
+    TIPO_VISA_TURISTA: ["ci", "itinerario", "reserva hotel", "solvencia económica"],
+}
+
+# Estados de documentos
+ESTADO_DOCUMENTO_PENDIENTE = "pendiente"
+ESTADO_DOCUMENTO_REVISADO = "revisado"
+ESTADO_DOCUMENTO_FALTANTE = "faltante"
+
+ESTADOS_DOCUMENTO = (
+    (ESTADO_DOCUMENTO_PENDIENTE, "Pendiente"),
+    (ESTADO_DOCUMENTO_REVISADO, "Revisado"),
+    (ESTADO_DOCUMENTO_FALTANTE, "Faltante"),
+)
+
+# Estados de carpeta
+ESTADO_CARPETA_PENDIENTE = "pendiente"
+ESTADO_CARPETA_APROBADO = "aprobado"
+ESTADO_CARPETA_RECHAZADO = "rechazado"
+
+ESTADOS_CARPETA = (
+    (ESTADO_CARPETA_PENDIENTE, "Pendiente"),
+    (ESTADO_CARPETA_APROBADO, "Aprobado"),
+    (ESTADO_CARPETA_RECHAZADO, "Rechazado"),
+)
+
 
 class Solicitante(models.Model):
     """Representa a una persona que solicita citas migratorias."""
     nombre = models.CharField("Nombre", max_length=120, unique=True)
+    cedula = models.CharField("Cédula", max_length=20, blank=True)
     telefono = models.CharField("Teléfono", max_length=20, blank=True)
     email = models.EmailField("Email", blank=True)
+    tipo_visa = models.CharField(
+        "Tipo de Visa",
+        max_length=20,
+        choices=TIPOS_VISA,
+        blank=True,
+        null=True
+    )
     creado_en = models.DateTimeField("Creado en", auto_now_add=True)
 
     class Meta:
@@ -149,3 +200,87 @@ class Cita(models.Model):
         self.fin = self._calcular_fin()
         self.full_clean()
         return super().save(*args, **kwargs)
+
+
+class Requisito(models.Model):
+    """Representa un requisito/documento requerido para un solicitante."""
+    solicitante = models.ForeignKey(
+        Solicitante,
+        on_delete=models.CASCADE,
+        related_name="requisitos"
+    )
+    nombre = models.CharField("Nombre", max_length=100)
+    estado = models.CharField(
+        "Estado",
+        max_length=20,
+        choices=ESTADOS_DOCUMENTO,
+        default=ESTADO_DOCUMENTO_FALTANTE
+    )
+    carga_habilitada = models.BooleanField("Carga Habilitada", default=True)
+    observaciones = models.TextField("Observaciones", blank=True)
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Requisito"
+        verbose_name_plural = "Requisitos"
+        ordering = ["nombre"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["solicitante", "nombre"],
+                name="uniq_solicitante_requisito"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.nombre} - {self.estado}"
+
+
+class Documento(models.Model):
+    """Representa un documento subido por el solicitante."""
+    requisito = models.ForeignKey(
+        Requisito,
+        on_delete=models.CASCADE,
+        related_name="documentos"
+    )
+    version = models.PositiveIntegerField("Versión", default=1)
+    estado = models.CharField(
+        "Estado",
+        max_length=20,
+        choices=ESTADOS_DOCUMENTO,
+        default=ESTADO_DOCUMENTO_PENDIENTE
+    )
+    archivo = models.FileField("Archivo", upload_to="documentos/", blank=True, null=True)
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Documento"
+        verbose_name_plural = "Documentos"
+        ordering = ["-version"]
+
+    def __str__(self):
+        return f"{self.requisito.nombre} v{self.version} - {self.estado}"
+
+
+class Carpeta(models.Model):
+    """Representa una carpeta que agrupa documentos de un solicitante."""
+    solicitante = models.OneToOneField(
+        Solicitante,
+        on_delete=models.CASCADE,
+        related_name="carpeta"
+    )
+    estado = models.CharField(
+        "Estado",
+        max_length=20,
+        choices=ESTADOS_CARPETA,
+        default=ESTADO_CARPETA_PENDIENTE
+    )
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Carpeta"
+        verbose_name_plural = "Carpetas"
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return f"Carpeta {self.solicitante.cedula} - {self.estado}"
+

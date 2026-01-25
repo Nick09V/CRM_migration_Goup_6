@@ -19,9 +19,12 @@ def before_scenario(context, scenario):
     Se ejecuta antes de cada escenario.
     Limpia la base de datos para garantizar pruebas aisladas.
     """
-    from migration.models import Cita, Solicitante, Agente
+    from migration.models import Cita, Solicitante, Agente, Requisito, Documento, Carpeta
 
-    # Limpiar datos de pruebas anteriores
+    # Limpiar datos de pruebas anteriores (orden importa por las FK)
+    Documento.objects.all().delete()
+    Carpeta.objects.all().delete()
+    Requisito.objects.all().delete()
     Cita.objects.all().delete()
     Solicitante.objects.all().delete()
     Agente.objects.all().delete()
