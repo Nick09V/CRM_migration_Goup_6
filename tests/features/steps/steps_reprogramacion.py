@@ -2,7 +2,7 @@
 Steps para la característica de Reprogramación de citas migratorias.
 Implementa los pasos BDD para los escenarios de reprogramación.
 """
-from behave import given, when, step
+from behave import given, step
 from django.utils import timezone as dj_timezone
 from django.core.exceptions import ValidationError as DjValidationError
 from datetime import timedelta, time
