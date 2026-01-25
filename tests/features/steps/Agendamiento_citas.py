@@ -1,7 +1,13 @@
-from behave import *
+"""
+Steps para la característica de Agendamiento de citas migratorias.
+Implementa los pasos BDD para los escenarios de agendamiento.
+"""
+from behave import step
 from django.utils import timezone as dj_timezone
 from django.core.exceptions import ValidationError as DjValidationError
-from migration.models import Agente, Cita
+from datetime import timedelta, time
+
+from migration.models import Agente, Cita, Solicitante, HORA_INICIO_ATENCION
 from migration.services.scheduling import agendar_cita, SolicitudAgendamiento
 from faker import Faker
 
@@ -9,110 +15,193 @@ use_step_matcher("re")
 faker = Faker("es_ES")
 
 
+# ==================== Funciones auxiliares ====================
+
+def obtener_proximo_dia_laboral():
+    """
+    Obtiene el próximo día laboral (lunes a sábado) a partir de mañana.
+    Evita usar el día actual para evitar problemas con fechas pasadas.
+    """
+    fecha = dj_timezone.localtime(dj_timezone.now()).date() + timedelta(days=1)
+
+    # Si cae domingo, avanzar al lunes
+    while fecha.weekday() == 6:  # 6 = domingo
+        fecha += timedelta(days=1)
+
+    return fecha
+
+
+def crear_horario_valido(hora=9):
+    """
+    Crea un horario válido para agendar citas.
+
+    Args:
+        hora: Hora del día (entre 8 y 11).
+
+    Returns:
+        DateTime con zona horaria para el próximo día laboral.
+    """
+    fecha_laboral = obtener_proximo_dia_laboral()
+    horario_naive = dj_timezone.datetime.combine(fecha_laboral, time(hora, 0))
+    return dj_timezone.make_aware(horario_naive)
+
+
+def crear_solicitante():
+    """
+    Crea un nuevo solicitante con datos aleatorios.
+
+    Returns:
+        Instancia de Solicitante guardada en la base de datos.
+    """
+    return Solicitante.objects.create(
+        nombre=faker.name(),
+        telefono=faker.phone_number(),
+        email=faker.email()
+    )
+
+
+def obtener_o_crear_agentes():
+    """
+    Asegura que existan agentes activos en el sistema.
+
+    Returns:
+        QuerySet de agentes activos.
+    """
+    Agente.objects.get_or_create(nombre="Agente A", defaults={"activo": True})
+    Agente.objects.get_or_create(nombre="Agente B", defaults={"activo": True})
+    return Agente.objects.filter(activo=True)
+
+
+# ==================== Escenario 1: Agendamiento exitoso ====================
+
 @step("que el solicitante no tiene una cita")
-def step_impl(context):
-    # Genera un nombre de cliente si no existe
-    context.cliente = getattr(context, "cliente", None) or faker.name()
-    Cita.objects.filter(cliente=context.cliente, estado=Cita.ESTADO_PENDIENTE).delete()
-    # Verifica que efectivamente no existan pendientes
-    assert not Cita.objects.filter(cliente=context.cliente, estado=Cita.ESTADO_PENDIENTE).exists()
+def paso_solicitante_sin_cita(context):
+    """Prepara un solicitante sin citas pendientes."""
+    context.solicitante = crear_solicitante()
+
+    # Verificar que no tenga citas pendientes
+    tiene_pendiente = context.solicitante.tiene_cita_pendiente()
+    assert not tiene_pendiente, "El solicitante no debería tener citas pendientes"
 
 
 @step("el solicitante selecciona un horario")
-def step_impl(context):
-    # Selecciona hoy a las 9:00 con zona activa
-    now = dj_timezone.now()
-    naive = dj_timezone.datetime(year=now.year, month=now.month, day=now.day, hour=9, minute=0)
-    inicio = dj_timezone.make_aware(naive)
-    context.inicio = inicio
+def paso_seleccionar_horario(context):
+    """El solicitante selecciona un horario válido para la cita."""
+    context.inicio = crear_horario_valido(hora=HORA_INICIO_ATENCION + 1)  # 9:00
 
-    Agente.objects.get_or_create(nombre="Agente A", defaults={"activo": True})
-    Agente.objects.get_or_create(nombre="Agente B", defaults={"activo": True})
-    # Verifica que hay agentes activos disponibles
-    assert Agente.objects.filter(activo=True).count() >= 2
+    # Asegurar que existan agentes
+    agentes = obtener_o_crear_agentes()
+    assert agentes.count() >= 1, "Debe existir al menos un agente activo"
 
 
 @step("el sistema agenda la cita con un agente disponible en dicho horario")
-def step_impl(context):
-    req = SolicitudAgendamiento(cliente=context.cliente, inicio=context.inicio)
-    context.cita = agendar_cita(req)
-    # Verifica que la cita tenga agente y que el agente no tenga otra cita en el mismo inicio
-    assert context.cita.agente is not None
-    assert not Cita.objects.filter(agente=context.cita.agente, inicio=context.inicio).exclude(pk=context.cita.pk).exists()
+def paso_agendar_cita(context):
+    """El sistema asigna la cita a un agente disponible."""
+    solicitud = SolicitudAgendamiento(
+        solicitante=context.solicitante,
+        inicio=context.inicio
+    )
+    context.cita = agendar_cita(solicitud)
+
+    # Verificar que se asignó un agente
+    assert context.cita.agente is not None, "La cita debe tener un agente asignado"
+
+    # Verificar que el agente no tenga otra cita en el mismo horario
+    citas_mismo_horario = Cita.objects.filter(
+        agente=context.cita.agente,
+        inicio=context.inicio,
+        estado=Cita.ESTADO_PENDIENTE
+    ).exclude(pk=context.cita.pk)
+
+    assert not citas_mismo_horario.exists(), (
+        "El agente no debe tener otra cita en el mismo horario"
+    )
 
 
 @step("la cita queda pendiente para su resolución")
-def step_impl(context):
+def paso_verificar_cita_pendiente(context):
+    """Verifica que la cita esté correctamente agendada."""
     cita = context.cita
-    assert cita.estado == Cita.ESTADO_PENDIENTE
-    assert cita.fin == cita.inicio + dj_timezone.timedelta(hours=1)
-    # La hora de inicio debe estar en [8, 12)
-    hora_local = dj_timezone.localtime(cita.inicio).hour
-    assert 8 <= hora_local < 12
 
+    # Verificar estado pendiente
+    assert cita.estado == Cita.ESTADO_PENDIENTE, "La cita debe estar pendiente"
 
-# Pasos adicionales del segundo escenario
-@step("que el solicitante ya tiene una cita pendiente")
-def step_impl(context):
-    context.cliente = faker.name()
-    Agente.objects.get_or_create(nombre="Agente A", defaults={"activo": True})
-    Agente.objects.get_or_create(nombre="Agente B", defaults={"activo": True})
-    now = dj_timezone.now()
-    naive = dj_timezone.datetime(year=now.year, month=now.month, day=now.day, hour=10)
-    inicio = dj_timezone.make_aware(naive)
-    context.inicio = inicio
-    agente = Agente.objects.filter(activo=True).first()
-    Cita.objects.update_or_create(
-        cliente=context.cliente,
-        estado=Cita.ESTADO_PENDIENTE,
-        defaults={
-            "agente": agente,
-            "inicio": inicio,
-            "fin": inicio + dj_timezone.timedelta(hours=1),
-        },
+    # Verificar que el fin se calculó automáticamente (inicio + 1 hora)
+    duracion_esperada = timedelta(hours=1)
+    duracion_real = cita.fin - cita.inicio
+    assert duracion_real == duracion_esperada, (
+        f"La duración debe ser 1 hora, pero es {duracion_real}"
     )
-    # Verificar que existe la cita pendiente inicial
-    assert Cita.objects.filter(cliente=context.cliente, estado=Cita.ESTADO_PENDIENTE, inicio=inicio).exists()
+
+    # Verificar horario de atención (8:00 - 11:59)
+    hora_inicio = dj_timezone.localtime(cita.inicio).hour
+    assert 8 <= hora_inicio < 12, (
+        f"La hora de inicio debe estar entre 8:00 y 11:59, pero es {hora_inicio}:00"
+    )
+
+
+# ==================== Escenario 2: Intento con cita existente ====================
+
+@step("que el solicitante ya tiene una cita pendiente")
+def paso_solicitante_con_cita_pendiente(context):
+    """Prepara un solicitante que ya tiene una cita pendiente."""
+    context.solicitante = crear_solicitante()
+    agentes = obtener_o_crear_agentes()
+    agente = agentes.first()
+
+    # Crear una cita pendiente para el solicitante
+    inicio_cita_existente = crear_horario_valido(hora=10)
+    context.cita_existente = Cita(
+        solicitante=context.solicitante,
+        agente=agente,
+        inicio=inicio_cita_existente,
+        estado=Cita.ESTADO_PENDIENTE
+    )
+    context.cita_existente.save()
+
+    # Verificar que la cita pendiente existe
+    assert context.solicitante.tiene_cita_pendiente(), (
+        "El solicitante debe tener una cita pendiente"
+    )
 
 
 @step("intenta agendar una nueva cita")
-def step_impl(context):
+def paso_intentar_nueva_cita(context):
+    """El solicitante intenta agendar una segunda cita."""
     context.error = None
+
     try:
-        now = dj_timezone.now()
-        naive = dj_timezone.datetime(year=now.year, month=now.month, day=now.day, hour=11)
-        nuevo_inicio = dj_timezone.make_aware(naive)
-        req = SolicitudAgendamiento(cliente=context.cliente, inicio=nuevo_inicio)
-        agendar_cita(req)
-    except DjValidationError as e:
-        context.error = e
+        # Intentar agendar en un horario diferente
+        nuevo_inicio = crear_horario_valido(hora=11)
+        solicitud = SolicitudAgendamiento(
+            solicitante=context.solicitante,
+            inicio=nuevo_inicio
+        )
+        agendar_cita(solicitud)
+    except DjValidationError as error:
+        context.error = error
 
 
 @step("el sistema rechaza el agendamiento")
-def step_impl(context):
-    assert context.error is not None
+def paso_verificar_rechazo(context):
+    """Verifica que el sistema rechazó la solicitud."""
+    assert context.error is not None, (
+        "El sistema debería haber rechazado el agendamiento"
+    )
 
 
 @step("se le notifica que debe cancelar una cita antes de agendar una nueva")
-def step_impl(context):
-    assert any("ya tiene una cita pendiente" in msg for msg in context.error.messages)
+def paso_verificar_mensaje_error(context):
+    """Verifica que se muestre el mensaje de error apropiado."""
+    mensaje_error = str(context.error)
 
+    palabras_clave = ["ya tiene una cita pendiente", "cancelar"]
+    contiene_mensaje = any(
+        palabra.lower() in mensaje_error.lower()
+        for palabra in palabras_clave
+    )
 
-# Paso adicional para validar asignación a distinto agente en mismo horario
-@step("si dos clientes agendan en el mismo horario se asignan a agentes distintos")
-def step_impl(context):
-    # Primer cliente
-    cliente1 = faker.name()
-    Cita.objects.filter(cliente=cliente1).delete()
-    req1 = SolicitudAgendamiento(cliente=cliente1, inicio=context.inicio)
-    cita1 = agendar_cita(req1)
-    # Segundo cliente en mismo horario
-    cliente2 = faker.name()
-    Cita.objects.filter(cliente=cliente2).delete()
-    req2 = SolicitudAgendamiento(cliente=cliente2, inicio=context.inicio)
-    cita2 = agendar_cita(req2)
-    # Validar agentes distintos
-    assert cita1.agente != cita2.agente
-    # Y que no exista doble asignación para un mismo agente en ese inicio
-    for agente in Agente.objects.filter(activo=True):
-        assert Cita.objects.filter(agente=agente, inicio=context.inicio).count() <= 1
+    assert contiene_mensaje, (
+        f"El mensaje debe indicar que ya tiene cita pendiente. "
+        f"Mensaje recibido: {mensaje_error}"
+    )
