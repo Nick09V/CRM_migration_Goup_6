@@ -240,7 +240,7 @@ def paso_cita_exitosa(context):
     try:
         cita = marcar_cita_exitosa(context.solicitante)
         context.cita = cita
-    except DjValidationError as e:
+    except DjValidationError:
         # Si la cita ya fue marcada como exitosa, verificar el estado
         context.cita.refresh_from_db()
 
