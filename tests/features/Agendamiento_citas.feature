@@ -1,7 +1,7 @@
 # Created by nickv at 21/1/2026
 # language: es
 
-
+@ready
 @citas
 Característica: Agendamiento de citas migratorias
   Como solicitante
