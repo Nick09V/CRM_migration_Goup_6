@@ -11,6 +11,9 @@ from django.core.exceptions import ValidationError
 
 from migration.models import Agente, Cita, Solicitante
 
+# Constantes de reglas de negocio para cancelación
+DIAS_MINIMOS_CANCELACION = 3
+
 
 @dataclass
 class SolicitudAgendamiento:
@@ -87,3 +90,57 @@ def agendar_cita(solicitud: SolicitudAgendamiento) -> Cita:
     return cita
 
 
+@dataclass
+class ResultadoCancelacion:
+    """Representa el resultado de un intento de cancelación."""
+    exitoso: bool
+    mensaje: str
+
+
+def validar_tiempo_cancelacion(cita: Cita) -> None:
+    """
+    Valida que la cancelación se realice con al menos 3 días de anticipación.
+
+    Args:
+        cita: La cita a validar.
+
+    Raises:
+        ValidationError: Si faltan menos de 3 días para la cita.
+    """
+    ahora = timezone.localtime(timezone.now())
+    fecha_cita = timezone.localtime(cita.inicio)
+    dias_restantes = (fecha_cita.date() - ahora.date()).days
+
+    if dias_restantes < DIAS_MINIMOS_CANCELACION:
+        raise ValidationError(
+            f"No se puede cancelar la cita. Las cancelaciones deben realizarse "
+            f"con al menos {DIAS_MINIMOS_CANCELACION} días de anticipación. "
+            f"Faltan solo {dias_restantes} días para su cita."
+        )
+
+
+def cancelar_cita(cita: Cita) -> ResultadoCancelacion:
+    """
+    Cancela una cita pendiente.
+
+    Args:
+        cita: La cita a cancelar.
+
+    Returns:
+        ResultadoCancelacion con el estado de la operación.
+
+    Raises:
+        ValidationError: Si la cita no puede ser cancelada.
+    """
+    if cita.estado != Cita.ESTADO_PENDIENTE:
+        raise ValidationError("Solo se pueden cancelar citas pendientes.")
+
+    validar_tiempo_cancelacion(cita)
+
+    # Eliminar la cita para liberar el horario
+    cita.delete()
+
+    return ResultadoCancelacion(
+        exitoso=True,
+        mensaje="La cita ha sido cancelada exitosamente."
+    )

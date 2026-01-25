@@ -1,6 +1,6 @@
 # Created by nickv at 21/1/2026
 # language: es
-
+@ready
 @citas
 Característica: Cancelación de citas migratorias
   Como solicitante
