@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
@@ -13,6 +14,7 @@ DIAS_LABORALES = [0, 1, 2, 3, 4, 5]  # Lunes a Sábado
 
 class Solicitante(models.Model):
     """Representa a una persona que solicita citas migratorias."""
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='solicitante', null=True, blank=True)
     nombre = models.CharField("Nombre", max_length=120, unique=True)
     telefono = models.CharField("Teléfono", max_length=20, blank=True)
     email = models.EmailField("Email", blank=True)
@@ -33,6 +35,7 @@ class Solicitante(models.Model):
 
 class Agente(models.Model):
     """Representa a un agente que atiende citas migratorias."""
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='agente', null=True, blank=True)
     nombre = models.CharField("Nombre", max_length=100, unique=True)
     activo = models.BooleanField("Activo", default=True)
 
