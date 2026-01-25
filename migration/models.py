@@ -101,11 +101,13 @@ class Cita(models.Model):
     ESTADO_PENDIENTE = "pendiente"
     ESTADO_REALIZADA = "realizada"
     ESTADO_CANCELADA = "cancelada"
+    ESTADO_EXITOSA = "exitosa"
 
     ESTADOS = (
         (ESTADO_PENDIENTE, "Pendiente"),
         (ESTADO_REALIZADA, "Realizada"),
         (ESTADO_CANCELADA, "Cancelada"),
+        (ESTADO_EXITOSA, "Exitosa"),
     )
 
     solicitante = models.ForeignKey(
@@ -201,6 +203,32 @@ class Cita(models.Model):
         self.full_clean()
         return super().save(*args, **kwargs)
 
+    def es_fecha_cita_hoy(self) -> bool:
+        """
+        Verifica si la fecha de la cita coincide con la fecha actual.
+
+        Returns:
+            True si la cita es para hoy, False en caso contrario.
+        """
+        hoy = timezone.localtime(timezone.now()).date()
+        fecha_cita = timezone.localtime(self.inicio).date()
+        return fecha_cita == hoy
+
+    def marcar_como_exitosa(self) -> None:
+        """
+        Marca la cita como exitosa.
+
+        Raises:
+            ValidationError: Si la cita no está en estado pendiente.
+        """
+        if self.estado != Cita.ESTADO_PENDIENTE:
+            raise ValidationError(
+                "Solo se pueden marcar como exitosas las citas pendientes."
+            )
+        self.estado = Cita.ESTADO_EXITOSA
+        # Usar super().save() para evitar full_clean() ya que solo actualizamos el estado
+        super(Cita, self).save(update_fields=["estado"])
+
 
 class Requisito(models.Model):
     """Representa un requisito/documento requerido para un solicitante."""
@@ -283,4 +311,3 @@ class Carpeta(models.Model):
 
     def __str__(self):
         return f"Carpeta {self.solicitante.cedula} - {self.estado}"
-
