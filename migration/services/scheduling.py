@@ -11,8 +11,9 @@ from django.core.exceptions import ValidationError
 
 from migration.models import Agente, Cita, Solicitante
 
-# Constantes de reglas de negocio para cancelación
+# Constantes de reglas de negocio
 DIAS_MINIMOS_CANCELACION = 3
+DIAS_MINIMOS_REPROGRAMACION = 3
 
 
 @dataclass
@@ -97,6 +98,21 @@ class ResultadoCancelacion:
     mensaje: str
 
 
+def calcular_dias_restantes(cita: Cita) -> int:
+    """
+    Calcula los días restantes hasta la fecha de la cita.
+
+    Args:
+        cita: La cita a evaluar.
+
+    Returns:
+        Número de días restantes hasta la cita.
+    """
+    ahora = timezone.localtime(timezone.now())
+    fecha_cita = timezone.localtime(cita.inicio)
+    return (fecha_cita.date() - ahora.date()).days
+
+
 def validar_tiempo_cancelacion(cita: Cita) -> None:
     """
     Valida que la cancelación se realice con al menos 3 días de anticipación.
@@ -107,9 +123,7 @@ def validar_tiempo_cancelacion(cita: Cita) -> None:
     Raises:
         ValidationError: Si faltan menos de 3 días para la cita.
     """
-    ahora = timezone.localtime(timezone.now())
-    fecha_cita = timezone.localtime(cita.inicio)
-    dias_restantes = (fecha_cita.date() - ahora.date()).days
+    dias_restantes = calcular_dias_restantes(cita)
 
     if dias_restantes < DIAS_MINIMOS_CANCELACION:
         raise ValidationError(
@@ -143,4 +157,95 @@ def cancelar_cita(cita: Cita) -> ResultadoCancelacion:
     return ResultadoCancelacion(
         exitoso=True,
         mensaje="La cita ha sido cancelada exitosamente."
+    )
+
+
+# ==================== Reprogramación de Citas ====================
+
+
+@dataclass
+class ResultadoReprogramacion:
+    """Representa el resultado de un intento de reprogramación."""
+    exitoso: bool
+    mensaje: str
+    cita: Cita | None = None
+
+
+def validar_tiempo_reprogramacion(cita: Cita) -> None:
+    """
+    Valida que la reprogramación se realice con al menos 3 días de anticipación.
+
+    Reutiliza la lógica de cálculo de días restantes para mantener consistencia
+    con las reglas de negocio de cancelación.
+
+    Args:
+        cita: La cita a validar.
+
+    Raises:
+        ValidationError: Si faltan menos de 3 días para la cita.
+    """
+    dias_restantes = calcular_dias_restantes(cita)
+
+    if dias_restantes < DIAS_MINIMOS_REPROGRAMACION:
+        raise ValidationError(
+            f"No se puede reprogramar la cita. Las reprogramaciones deben realizarse "
+            f"con al menos {DIAS_MINIMOS_REPROGRAMACION} días de anticipación. "
+            f"Faltan solo {dias_restantes} días para su cita."
+        )
+
+
+def validar_cita_pendiente(cita: Cita) -> None:
+    """
+    Valida que la cita esté en estado pendiente.
+
+    Args:
+        cita: La cita a validar.
+
+    Raises:
+        ValidationError: Si la cita no está pendiente.
+    """
+    if cita.estado != Cita.ESTADO_PENDIENTE:
+        raise ValidationError("Solo se pueden reprogramar citas pendientes.")
+
+
+def reprogramar_cita(cita: Cita, nuevo_inicio: datetime) -> ResultadoReprogramacion:
+    """
+    Reprograma una cita pendiente a un nuevo horario.
+
+    Libera el horario anterior del agente y asigna el nuevo horario.
+    Si no hay agente disponible en el nuevo horario, intenta buscar otro agente.
+
+    Args:
+        cita: La cita a reprogramar.
+        nuevo_inicio: Nueva fecha y hora de inicio para la cita.
+
+    Returns:
+        ResultadoReprogramacion con el estado de la operación y la cita actualizada.
+
+    Raises:
+        ValidationError: Si la cita no puede ser reprogramada.
+    """
+    # Validar que la cita esté pendiente
+    validar_cita_pendiente(cita)
+
+    # Validar tiempo mínimo de anticipación
+    validar_tiempo_reprogramacion(cita)
+
+    # Buscar agente disponible para el nuevo horario
+    agente_disponible = buscar_agente_disponible(nuevo_inicio)
+
+    if not agente_disponible:
+        raise ValidationError(
+            "No hay agentes disponibles para el nuevo horario seleccionado."
+        )
+
+    # Actualizar la cita con el nuevo horario y agente
+    cita.inicio = nuevo_inicio
+    cita.agente = agente_disponible
+    cita.save()
+
+    return ResultadoReprogramacion(
+        exitoso=True,
+        mensaje="La cita ha sido reprogramada exitosamente.",
+        cita=cita
     )
