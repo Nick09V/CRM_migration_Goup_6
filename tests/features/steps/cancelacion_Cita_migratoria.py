@@ -7,15 +7,11 @@ from django.utils import timezone as dj_timezone
 from django.core.exceptions import ValidationError as DjValidationError
 from datetime import timedelta, time
 
-from migration.models import Agente, Cita, Solicitante
+from migration.models import Cita
 from migration.services.scheduling import (
     cancelar_cita,
     DIAS_MINIMOS_CANCELACION,
 )
-from faker import Faker
-
-
-faker = Faker("es_ES")
 
 
 # ==================== Funciones auxiliares ====================
@@ -55,57 +51,11 @@ def crear_horario_con_anticipacion(dias_anticipacion: int, hora: int = 9):
     return dj_timezone.make_aware(horario_naive)
 
 
-def crear_solicitante():
-    """
-    Crea un nuevo solicitante con datos aleatorios.
-
-    Returns:
-        Instancia de Solicitante guardada en la base de datos.
-    """
-    return Solicitante.objects.create(
-        nombre=faker.name(),
-        telefono=faker.phone_number(),
-        email=faker.email()
-    )
-
-
-def obtener_o_crear_agente():
-    """
-    Asegura que exista un agente activo en el sistema.
-
-    Returns:
-        Instancia de Agente.
-    """
-    agente, _ = Agente.objects.get_or_create(
-        nombre="Agente Cancelaciones",
-        defaults={"activo": True}
-    )
-    return agente
-
-
 # ==================== Antecedentes ====================
-
-@step("que el solicitante tiene una cita pendiente")
-def paso_solicitante_tiene_cita_pendiente(context):
-    """Prepara un solicitante con una cita pendiente."""
-    context.solicitante = crear_solicitante()
-    context.agente = obtener_o_crear_agente()
-
-    # Crear cita con suficiente anticipación (7 días)
-    context.inicio_cita = crear_horario_con_anticipacion(dias_anticipacion=7, hora=9)
-
-    context.cita = Cita(
-        solicitante=context.solicitante,
-        agente=context.agente,
-        inicio=context.inicio_cita,
-        estado=Cita.ESTADO_PENDIENTE
-    )
-    context.cita.save()
-
-    # Verificar que la cita fue creada correctamente
-    assert context.solicitante.tiene_cita_pendiente(), (
-        "El solicitante debe tener una cita pendiente"
-    )
+# NOTA: El paso "que el solicitante tiene una cita pendiente" está definido
+# en steps_reprogramacion.py y se reutiliza aquí.
+# Este paso guarda: context.cita, context.solicitante, context.agente_original,
+# context.horario_original
 
 
 # ==================== Escenario 1: Cancelación exitosa ====================
@@ -115,6 +65,10 @@ def paso_solicita_cancelar_cita(context):
     """El solicitante solicita cancelar su cita."""
     context.error = None
     context.resultado = None
+
+    # Guardar referencias antes de cancelar para verificaciones posteriores
+    context.agente = getattr(context, 'agente_original', context.cita.agente)
+    context.inicio_cita = getattr(context, 'horario_original', context.cita.inicio)
 
     try:
         context.resultado = cancelar_cita(context.cita)
@@ -163,17 +117,21 @@ def paso_horario_disponible(context):
 def paso_faltan_dos_dias(context):
     """Modifica la cita para que falten solo 2 días."""
     # Calcular nueva fecha con solo 2 días de anticipación
-    context.inicio_cita = crear_horario_con_anticipacion(dias_anticipacion=2, hora=10)
+    nuevo_inicio = crear_horario_con_anticipacion(dias_anticipacion=2, hora=10)
 
     # Usar update() para evitar las validaciones del modelo
     # Esto simula una cita que fue agendada hace tiempo y ahora está próxima
     Cita.objects.filter(pk=context.cita.pk).update(
-        inicio=context.inicio_cita,
-        fin=context.inicio_cita + timedelta(hours=1)
+        inicio=nuevo_inicio,
+        fin=nuevo_inicio + timedelta(hours=1)
     )
 
     # Refrescar la instancia desde la base de datos
     context.cita.refresh_from_db()
+
+    # Guardar referencias para verificaciones posteriores
+    context.agente = getattr(context, 'agente_original', context.cita.agente)
+    context.inicio_cita = context.cita.inicio
 
     # Verificar los días restantes
     ahora = dj_timezone.localtime(dj_timezone.now()).date()
