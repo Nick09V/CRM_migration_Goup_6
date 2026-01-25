@@ -4,7 +4,7 @@ Gestiona la lógica de negocio para agendar citas con agentes disponibles.
 """
 from __future__ import annotations
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.utils import timezone
 from django.core.exceptions import ValidationError
