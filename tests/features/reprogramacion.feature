@@ -1,6 +1,6 @@
 # Created by nickv at 21/1/2026
 # language: es
-
+@ready
 @citas
 Característica: Reprogramación de citas migratorias
   Como solicitante
