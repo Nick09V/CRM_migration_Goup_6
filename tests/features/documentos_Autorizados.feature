@@ -15,7 +15,6 @@ Característica: repositorio de documentos autoorganizado
     Cuando sube el archivo "pasaporte_v1.pdf"
     Entonces el archivo se guarda como "Versión 1"
     Y el estado del documento cambia a "Pendiente"
-    Y el sistema impide subir una nueva versión hasta que esta sea revisada
 
 
   Esquema del escenario: Carga de un documento previamente rechazado

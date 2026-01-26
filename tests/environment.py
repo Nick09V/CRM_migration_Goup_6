@@ -33,5 +33,22 @@ def before_scenario(context, scenario):
 def after_scenario(context, scenario):
     """
     Se ejecuta después de cada escenario.
+    Limpia archivos físicos creados durante las pruebas.
     """
-    pass
+    from migration.services.documentos import limpiar_carpeta_documentos
+
+    # Limpiar carpeta de documentos después de cada escenario
+    if "documentos" in [tag for tag in scenario.tags]:
+        limpiar_carpeta_documentos()
+
+
+def after_feature(context, feature):
+    """
+    Se ejecuta después de cada feature.
+    Limpia archivos físicos para asegurar que no queden residuos.
+    """
+    from migration.services.documentos import limpiar_carpeta_documentos
+
+    # Limpiar carpeta de documentos al finalizar features de documentos
+    if "documentos" in [tag for tag in feature.tags]:
+        limpiar_carpeta_documentos()

@@ -262,6 +262,65 @@ class Requisito(models.Model):
     def __str__(self):
         return f"{self.nombre} - {self.estado}"
 
+    def obtener_ultima_version(self) -> int:
+        """
+        Obtiene el número de la última versión del documento.
+
+        Returns:
+            Número de la última versión o 0 si no hay documentos.
+        """
+        ultimo_doc = self.documentos.order_by("-version").first()
+        return ultimo_doc.version if ultimo_doc else 0
+
+    def obtener_documento_actual(self):
+        """
+        Obtiene el documento con la versión más reciente.
+
+        Returns:
+            Instancia de Documento o None si no hay documentos.
+        """
+        return self.documentos.order_by("-version").first()
+
+    def puede_subir_nuevo_documento(self) -> bool:
+        """
+        Verifica si se puede subir un nuevo documento.
+
+        Reglas:
+        - Si no hay documentos, se puede subir.
+        - Si el último documento está pendiente, NO se puede subir.
+        - Si el último documento fue rechazado (faltante), se puede subir.
+        - Si el último documento fue revisado, NO se puede subir nueva versión.
+
+        Returns:
+            True si se puede subir un nuevo documento.
+        """
+        if not self.carga_habilitada:
+            return False
+
+        documento_actual = self.obtener_documento_actual()
+        if documento_actual is None:
+            return True
+
+        # Solo puede subir si el último fue rechazado
+        return documento_actual.estado == ESTADO_DOCUMENTO_FALTANTE
+
+    def habilitar_carga(self) -> None:
+        """Habilita la carga de documentos para este requisito."""
+        self.carga_habilitada = True
+        self.save(update_fields=["carga_habilitada"])
+
+    def deshabilitar_carga(self) -> None:
+        """Deshabilita la carga de documentos para este requisito."""
+        self.carga_habilitada = False
+        self.save(update_fields=["carga_habilitada"])
+
+    def actualizar_estado_segun_documento(self) -> None:
+        """Actualiza el estado del requisito según el estado del último documento."""
+        documento_actual = self.obtener_documento_actual()
+        if documento_actual:
+            self.estado = documento_actual.estado
+            self.save(update_fields=["estado"])
+
 
 class Documento(models.Model):
     """Representa un documento subido por el solicitante."""
@@ -277,16 +336,61 @@ class Documento(models.Model):
         choices=ESTADOS_DOCUMENTO,
         default=ESTADO_DOCUMENTO_PENDIENTE
     )
-    archivo = models.FileField("Archivo", upload_to="documentos/", blank=True, null=True)
+    nombre_archivo = models.CharField("Nombre Archivo", max_length=255, blank=True)
+    ruta_archivo = models.CharField("Ruta Archivo", max_length=500, blank=True)
     creado_en = models.DateTimeField("Creado en", auto_now_add=True)
 
     class Meta:
         verbose_name = "Documento"
         verbose_name_plural = "Documentos"
         ordering = ["-version"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["requisito", "version"],
+                name="uniq_requisito_version"
+            ),
+        ]
 
     def __str__(self):
         return f"{self.requisito.nombre} v{self.version} - {self.estado}"
+
+    def obtener_ruta_completa(self) -> str:
+        """
+        Genera la ruta completa del documento según la estructura definida.
+        Estructura: Documentos/CI_solicitante/tipoVisa/documentoCarpeta/version_n/
+
+        Returns:
+            Ruta completa del documento.
+        """
+        solicitante = self.requisito.solicitante
+        cedula = solicitante.cedula or "SIN_CEDULA"
+        tipo_visa = solicitante.tipo_visa or "SIN_VISA"
+        nombre_requisito = self.requisito.nombre.replace(" ", "_")
+
+        return f"Documentos/{cedula}/{tipo_visa}/{nombre_requisito}/version_{self.version}"
+
+    def es_version_pendiente(self) -> bool:
+        """Verifica si el documento está en estado pendiente."""
+        return self.estado == ESTADO_DOCUMENTO_PENDIENTE
+
+    def es_version_rechazada(self) -> bool:
+        """Verifica si el documento ha sido rechazado (faltante)."""
+        return self.estado == ESTADO_DOCUMENTO_FALTANTE
+
+    def marcar_como_pendiente(self) -> None:
+        """Marca el documento como pendiente de revisión."""
+        self.estado = ESTADO_DOCUMENTO_PENDIENTE
+        self.save(update_fields=["estado"])
+
+    def marcar_como_revisado(self) -> None:
+        """Marca el documento como revisado/aprobado."""
+        self.estado = ESTADO_DOCUMENTO_REVISADO
+        self.save(update_fields=["estado"])
+
+    def marcar_como_faltante(self) -> None:
+        """Marca el documento como faltante/rechazado."""
+        self.estado = ESTADO_DOCUMENTO_FALTANTE
+        self.save(update_fields=["estado"])
 
 
 class Carpeta(models.Model):
@@ -311,3 +415,46 @@ class Carpeta(models.Model):
 
     def __str__(self):
         return f"Carpeta {self.solicitante.cedula} - {self.estado}"
+
+    def obtener_ruta_base(self) -> str:
+        """
+        Obtiene la ruta base de la carpeta del solicitante.
+        Estructura: Documentos/CI_solicitante/tipoVisa/
+
+        Returns:
+            Ruta base de la carpeta.
+        """
+        cedula = self.solicitante.cedula or "SIN_CEDULA"
+        tipo_visa = self.solicitante.tipo_visa or "SIN_VISA"
+        return f"Documentos/{cedula}/{tipo_visa}"
+
+    def obtener_documentos_pendientes(self):
+        """
+        Obtiene todos los documentos pendientes de revisión del solicitante.
+
+        Returns:
+            QuerySet de documentos pendientes.
+        """
+        return Documento.objects.filter(
+            requisito__solicitante=self.solicitante,
+            estado=ESTADO_DOCUMENTO_PENDIENTE
+        )
+
+    def tiene_documentos_pendientes(self) -> bool:
+        """Verifica si hay documentos pendientes de revisión."""
+        return self.obtener_documentos_pendientes().exists()
+
+    def todos_documentos_revisados(self) -> bool:
+        """
+        Verifica si todos los documentos han sido revisados.
+
+        Returns:
+            True si todos los documentos están revisados.
+        """
+        documentos = Documento.objects.filter(
+            requisito__solicitante=self.solicitante
+        )
+        if not documentos.exists():
+            return False
+        return all(doc.estado == ESTADO_DOCUMENTO_REVISADO for doc in documentos)
+
