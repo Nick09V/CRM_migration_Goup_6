@@ -3,7 +3,7 @@
 Steps para la característica de repositorio de documentos autoorganizado.
 Implementa los pasos BDD para los escenarios de carga de documentos.
 """
-from behave import given, when, then, step
+from behave import given, when, then
 from django.core.exceptions import ValidationError as DjValidationError
 
 from migration.models import (
@@ -11,22 +11,16 @@ from migration.models import (
     Requisito,
     Documento,
     Carpeta,
-    ESTADO_DOCUMENTO_PENDIENTE,
     ESTADO_DOCUMENTO_FALTANTE,
-    TIPOS_VISA,
-    ESTADOS_DOCUMENTO,
 )
 from migration.services.documentos import (
     subir_documento,
     rechazar_documento,
     aprobar_documento,
-    limpiar_carpeta_documentos,
     eliminar_carpeta_solicitante,
     obtener_estados_revision_permitidos,
     obtener_tipos_visa_soportados,
-    puede_subir_nueva_version,
     obtener_o_crear_requisito,
-    RUTA_BASE_DOCUMENTOS,
 )
 from faker import Faker
 
