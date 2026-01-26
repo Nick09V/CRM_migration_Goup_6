@@ -1,4 +1,6 @@
 # language: es
+
+@ready
 @documentos
 Característica: repositorio de documentos autoorganizado
   Como agente de migración

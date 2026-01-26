@@ -1,7 +1,7 @@
 # Created by nickv at 21/1/2026
 # language: es
 
-
+@ready
 @documentos
 Característica: Registro de requisitos migratorios
   Como agente de migración
