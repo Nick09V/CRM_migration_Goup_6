@@ -37,13 +37,6 @@ jobs:
       - name: Django System Check
         run: python manage.py check
 
-      - name: Create Migrations
-        run: python manage.py makemigrations
-        env:
-          DEBUG: "False"
-          SECRET_KEY: "ci-secret-key"
-          DJANGO_SETTINGS_MODULE: "mi_proyecto.settings"
-
       - name: Run Migrations
         run: python manage.py migrate
         env:
