@@ -17,6 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from migration.views import home_view, login_view, logout_view, dashboard_router
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
+    path("", home_view, name="home"),
+    path("login/", login_view, name="login"),
+    # Logout solo acepta POST por seguridad (CSRF protection)
+    path("logout/", logout_view, name="logout"),
+    path("dashboard/", dashboard_router, name="dashboard"),
 ]

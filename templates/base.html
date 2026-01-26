@@ -1,10 +1,108 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CRM Migration{% endblock %}</title>
 
+    <!-- Tailwind via CDN para prototipado rápido -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- HTMX para interacciones parciales -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Alpine para microinteracciones -->
+    <script defer src="https://unpkg.com/alpinejs@3.13.0/dist/cdn.min.js"></script>
+
+    <style>
+        /* HTMX Global Styles - Funciona en todos los templates */
+        .htmx-indicator {
+            opacity: 0;
+            transition: opacity 200ms ease-in;
+        }
+        .htmx-request .htmx-indicator {
+            opacity: 1;
+        }
+        
+        /* Oculta elementos con clase htmx-indicator-hidden durante peticiones HTMX */
+        .htmx-indicator-hidden {
+            display: inline;
+        }
+        .htmx-request .htmx-indicator-hidden {
+            display: none;
+        }
+        
+        /* Estilos de deshabilitación para botones durante peticiones */
+        button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        
+        /* Animación de error para alertas */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .alert-error {
+            animation: slideIn 300ms ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-900">
+
+    {% block body %}
+    <div class="max-w-7xl mx-auto p-4">
+        {% block content %}{% endblock %}
+    </div>
+    {% endblock %}
+
+    <script>
+        // ===== Configuración CSRF para HTMX =====
+        // Extrae el token CSRF del input hidden del formulario (método recomendado por Django)
+        function getCsrfToken() {
+            const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (csrfInput) {
+                return csrfInput.value;
+            }
+            // Fallback: busca en cookies si no está en el DOM
+            const name = 'csrftoken=';
+            const cookies = document.cookie.split(';');
+            for (let c of cookies) {
+                c = c.trim();
+                if (c.startsWith(name)) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return '';
+        }
+
+        // Configura el token CSRF en cada petición HTMX
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            evt.detail.headers['X-CSRFToken'] = getCsrfToken();
+        });
+
+        // ===== Manejo de errores HTMX =====
+        // Si la petición falla (500, timeout, etc.), muestra mensaje de error
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            console.error('Error en petición HTMX:', evt.detail);
+        });
+
+        // ===== Indicadores de carga HTMX =====
+        // Puedes agregar eventos aquí para tracking de análitica si lo necesitas
+        document.body.addEventListener('htmx:xhr:loadstart', function(evt) {
+            // console.log('Petición iniciada');
+        });
+
+        document.body.addEventListener('htmx:xhr:loadend', function(evt) {
+            // console.log('Petición finalizada');
+        });
+    </script>
 </body>
 </html>
