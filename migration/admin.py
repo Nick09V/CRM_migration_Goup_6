@@ -11,7 +11,7 @@ class SolicitanteAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'email', 'telefono', 'creado_en', 'tiene_cita_pendiente')
     search_fields = ('nombre', 'email', 'telefono')
     list_filter = ('creado_en',)
-    readonly_fields = ('creado_en', 'usuario')
+    readonly_fields = ('creado_en',)
     
     fieldsets = (
         ('Información Personal', {
@@ -31,7 +31,6 @@ class AgenteAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'usuario', 'activo')
     search_fields = ('nombre', 'usuario__username')
     list_filter = ('activo',)
-    readonly_fields = ('usuario',)
     
     fieldsets = (
         ('Información del Agente', {

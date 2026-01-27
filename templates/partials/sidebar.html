@@ -1,0 +1,35 @@
+<aside class="w-64 bg-white dark:bg-background-dark border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between p-4 hidden md:flex h-full">
+    <div class="space-y-6">
+        <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest px-3 mb-4">Operaciones</p>
+            <nav class="space-y-1">
+                <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-medium" href="{% url 'dashboard' %}">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+                    <span class="material-symbols-outlined">groups</span>
+                    <span>Sección Clientes</span>
+                </a>
+                <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+                    <span class="material-symbols-outlined">calendar_month</span>
+                    <span>Citas Asignadas</span>
+                </a>
+                <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" href="#">
+                    <span class="material-symbols-outlined">description</span>
+                    <span>Documentos Pendientes</span>
+                </a>
+            </nav>
+        </div>
+    </div>
+    
+    <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 mt-auto">
+        <div class="flex items-center gap-2 text-primary mb-2">
+            <span class="material-symbols-outlined text-sm">support_agent</span>
+            <span class="text-xs font-bold uppercase tracking-tight">Soporte</span>
+        </div>
+        <button class="w-full py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold rounded-lg hover:shadow-sm">
+            Ayuda Sistema
+        </button>
+    </div>
+</aside>

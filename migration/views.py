@@ -7,9 +7,10 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
+from django.template import context
 from django.urls import reverse
 from django.utils.html import escape
-
+from .models import Cita, Solicitante, Agente
 # Configuración de logging para auditoría
 logger = logging.getLogger(__name__)
 
@@ -156,18 +157,33 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 @login_required(login_url="login")
 def dashboard_router(request: HttpRequest) -> HttpResponse:
 	"""Router simple para dashboard según rol.
-
-	En el futuro, si se agregan roles (agente/cliente/admin), aquí se puede
-	bifurcar la plantilla o redirigir a diferentes dashboards.
-	
-	Args:
-		request: HttpRequest autenticado (garantizado por @login_required)
-
-	Returns:
-		HttpResponse: Renderiza dashboard.html
 	"""
 
+	#1. Detectar si es un Agente 
+	if hasattr(request.user, 'agente'):
+		agente = request.user.agente
+
+		# Consultas a la BD 
+		# A. Contar citas pendientes (KPI)
+		total_pendientes = Cita.objects.filter(
+			agente=agente, estado=Cita.ESTADO_PENDIENTE
+		).count()
+
+		# B. Trare las p´roximas 3 citas pendientes
+		proximas_citas = Cita.objects.filter(
+			agente=agente,
+			estado=Cita.ESTADO_PENDIENTE
+		).select_related('solicitante').order_by('inicio')[:3]
+
+		context = {
+			'total_pendientes': total_pendientes,
+			'proximas_citas': proximas_citas,
+		}
+		return render(request, "migration/dashboard_agente.html", context)
+
+	# Si es SuperUser se lo redirige al panel de control. 
 	if request.user.is_superuser:
 		return redirect("/admin/")
 
+	#3. Si no es ni agente ni superuser, es cliente. 
 	return render(request, "migration/dashboard.html")
