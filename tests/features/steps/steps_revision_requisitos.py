@@ -128,7 +128,7 @@ def paso_documento_pendiente_por_revisar(context):
 # ==================== Escenario 1: Aprobación de un documento ====================
 
 
-@when("el agente marca como apruebado el documento")
+@when("el agente marca como aprobado el documento")
 def paso_agente_aprueba_documento(context):
     """El agente aprueba el documento pendiente."""
     context.error = None
