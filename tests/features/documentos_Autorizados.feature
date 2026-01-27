@@ -1,4 +1,6 @@
 # language: es
+
+@ready
 @documentos
 Característica: repositorio de documentos autoorganizado
   Como agente de migración
@@ -6,39 +8,26 @@ Característica: repositorio de documentos autoorganizado
   Para facilitar el seguimiento de los documentos
 
   Antecedentes:
-    Dado que el repositorio de documentos está disponible y vacío
-    Y los estados de revisión permitidos son: pendiente, revisado, faltante
+    Dado los estados de revisión permitidos son: pendiente, revisado, faltante
     Y los tipos de visa soportados son: estudiantil, trabajo, residencial, turista
 
 
-  Escenario: Carga de un documento no revisado previamente
-    Dado que un solicitante requiere una visa del tipo "trabajo"
+  Escenario: Carga inicial de un documento
+    Dado que un solicitante de visa de "trabajo" no ha subido su "Pasaporte"
+    Cuando sube el archivo "pasaporte_v1.pdf"
+    Entonces el archivo se guarda como "Versión 1"
+    Y el estado del documento cambia a "Pendiente"
+
+
+  Esquema del escenario: Carga de un documento previamente rechazado
+    Dado que la versión del documento es: <version_previa>
+    Y dicho documento ha sido rechazado
     Cuando el solicitante sube un documento
-    Entonces el documento se guarda en el repositorio como versión 1
-    Y el documento quedá pendiente para su revisión
-    Y se bloquea la carga del documento
-
-
-  Escenario: Carga de un documento rechazado
-    Dado que un solicitante requiere una visa del tipo "trabajo"
-    Y previamente subió el "documento"
-    Cuando el solicitante sube otro "documento"
-    Entonces el documento se guarda en el repositorio como versión "n"
-    Y el documento quedá pendiente para su revisión
-    Y se bloquea la carga del documento
-
-
-  Esquema del escenario: Carga de todos los documentos
-    Dado que un solicitante requiere una visa del tipo <tipo_visa>
-    Y tiene registrado que debe subir los siguientes documentos: <documentos>
-    Cuando el solicitante sube un documento
-    Entonces los documentos se guardan en una carpeta
-    Y la carpeta tiene de nombre <cedula_solicitante>
-    Y los documentos deberán ser revisados por el agente
+    Entonces el documento se guarda como versión <version_esperada>
+    Y el estado queda "pendiente"
 
     Ejemplos:
-      | cedula_solicitante | tipo_visa   | documentos                                                          |
-      | 1720274910         | estudiantil | ci, carta aceptación, solvencia económica, certificado idioma       |
-      | 1710307503         | trabajo     | ci, oferta laboral, experiencia, antecedentes, pruebas calificación |
-      | 3710306563         | residencial | ci, sustento económico, seguro médico, acreditación arraigo         |
-
+      | version_previa | version_esperada |
+      | 2              | 3                |
+      | 1              | 2                |
+      | 5              | 6                |
