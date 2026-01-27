@@ -9,9 +9,7 @@ from django.core.exceptions import ValidationError as DjValidationError
 from migration.models import (
     Solicitante,
     Agente,
-    Requisito,
     Documento,
-    Carpeta,
     ESTADO_DOCUMENTO_PENDIENTE,
     ESTADO_DOCUMENTO_REVISADO,
     ESTADO_DOCUMENTO_FALTANTE,
@@ -308,7 +306,7 @@ def paso_notifica_razones_rechazo(context):
 
     # Verificar que el mensaje contiene las razones
     assert context.razones_rechazo in notificacion.mensaje, (
-        f"El mensaje de notificación debe contener las razones del rechazo"
+        "El mensaje de notificación debe contener las razones del rechazo"
     )
 
 
@@ -332,6 +330,6 @@ def paso_habilita_carga_documento(context):
 
     # Verificar que las observaciones fueron guardadas
     assert requisito.observaciones == context.razones_rechazo, (
-        f"Las observaciones deben contener las razones del rechazo"
+        "Las observaciones deben contener las razones del rechazo"
     )
 
