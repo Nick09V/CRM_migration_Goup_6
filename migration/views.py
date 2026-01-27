@@ -355,66 +355,125 @@ def subir_doc(request: HttpRequest, requisito_id: int) -> HttpResponse:
 def mostrar_calendario(request: HttpRequest) -> HttpResponse:
 	"""Vista HTMX para mostrar calendario de agendamiento de citas.
 	
-	Muestra los próximos 14 días disponibles (horario 8-12, lunes a sábado).
+	Muestra calendario mensual con días disponibles (horario 8-12, lunes a sábado).
 	
 	Args:
 		request: HttpRequest autenticado
 	
 	Returns:
-		HttpResponse: Fragmento HTML con calendario
+		HttpResponse: Fragmento HTML con calendario mensual
 	"""
 	from datetime import timedelta
+	from calendar import monthcalendar, month_name
 	from migration.models import HORA_INICIO_ATENCION, HORA_FIN_ATENCION, DIAS_LABORALES
 	
-	solicitante = request.user.solicitante
 	ahora_local = timezone.localtime(timezone.now())
+	mes_param = request.GET.get('mes', ahora_local.month)
+	anio_param = request.GET.get('anio', ahora_local.year)
 	
-	# Generar próximos 14 días laborales
-	dias_disponibles = []
-	fecha_actual = ahora_local.date()
+	mes = int(mes_param)
+	anio = int(anio_param)
 	
-	for i in range(1, 15):  # Próximos 14 días
-		fecha = fecha_actual + timedelta(days=i)
-		if fecha.weekday() in DIAS_LABORALES:  # Lunes a Sábado
-			dias_disponibles.append(fecha)
+	# Calcular mes anterior y siguiente
+	mes_anterior = mes - 1 if mes > 1 else 12
+	anio_anterior = anio if mes > 1 else anio - 1
+	mes_siguiente = mes + 1 if mes < 12 else 1
+	anio_siguiente = anio if mes < 12 else anio + 1
+	
+	# Obtener calendario del mes
+	cal = monthcalendar(anio, mes)
+	mes_nombre = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+	              'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][mes]
+	
+	fecha_hoy = ahora_local.date()
+	fecha_maxima = fecha_hoy + timedelta(weeks=2)  # Máximo 2 semanas
 	
 	# HTML del calendario
 	html = f'''
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
 		<div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="this.parentElement.remove()"></div>
-		<div class="relative bg-white dark:bg-background-dark p-6 rounded-xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+		<div class="relative bg-white dark:bg-background-dark p-6 rounded-xl max-w-md w-full shadow-2xl">
 			<div class="flex items-center justify-between mb-6">
 				<h3 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
 					<span class="material-symbols-outlined text-primary">calendar_month</span>
-					Selecciona fecha y hora
+					Agendar Cita
 				</h3>
 				<button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
 					<span class="material-symbols-outlined">close</span>
 				</button>
 			</div>
 			
-			<p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Horario de atención: {HORA_INICIO_ATENCION}:00 - {HORA_FIN_ATENCION}:00 hrs | Días laborales</p>
+			<!-- Navegación de mes -->
+			<div class="flex items-center justify-between mb-4 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+				<button hx-get="/cita/calendario/?mes={mes_anterior}&anio={anio_anterior}" 
+				        hx-target="#calendar-modal" 
+				        hx-swap="innerHTML"
+				        class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
+					<span class="material-symbols-outlined">chevron_left</span>
+				</button>
+				<span class="font-bold text-gray-900 dark:text-white">{mes_nombre} {anio}</span>
+				<button hx-get="/cita/calendario/?mes={mes_siguiente}&anio={anio_siguiente}" 
+				        hx-target="#calendar-modal" 
+				        hx-swap="innerHTML"
+				        class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
+					<span class="material-symbols-outlined">chevron_right</span>
+				</button>
+			</div>
 			
-			<div class="grid grid-cols-2 gap-4 mb-6">
+			<!-- Días de la semana -->
+			<div class="grid grid-cols-7 gap-1 mb-2">
+				<div class="text-center text-xs font-bold text-gray-500 py-2">D</div>
+				<div class="text-center text-xs font-bold text-gray-500 py-2">L</div>
+				<div class="text-center text-xs font-bold text-gray-500 py-2">M</div>
+				<div class="text-center text-xs font-bold text-gray-500 py-2">M</div>
+				<div class="text-center text-xs font-bold text-gray-500 py-2">J</div>
+				<div class="text-center text-xs font-bold text-gray-500 py-2">V</div>
+				<div class="text-center text-xs font-bold text-gray-500 py-2">S</div>
+			</div>
+			
+			<!-- Grid del calendario -->
+			<div class="grid grid-cols-7 gap-1 mb-6">
 	'''
 	
-	# Días del calendario
-	for fecha in dias_disponibles:
-		dia_semana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][fecha.weekday()]
-		html += f'''
-		<button onclick="document.querySelectorAll('.dia-btn').forEach(b => b.classList.remove('bg-primary', 'text-white')); this.classList.add('bg-primary', 'text-white'); document.getElementById('fecha-seleccionada').value = '{fecha.isoformat()}'; document.getElementById('horarios-container').classList.remove('hidden');"
-				class="dia-btn p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-primary transition-colors text-left">
-			<p class="text-xs text-gray-500 dark:text-gray-400 uppercase">{dia_semana}</p>
-			<p class="text-lg font-bold text-gray-900 dark:text-white">{fecha.day}</p>
-			<p class="text-xs text-gray-500 dark:text-gray-400">{fecha.strftime("%B")}</p>
-		</button>
-		'''
+	# Generar días del mes
+	for semana in cal:
+		for dia in semana:
+			if dia == 0:
+				html += '<div class="aspect-square"></div>'
+			else:
+				from datetime import date
+				fecha = date(anio, mes, dia)
+				
+				# Validar si es día disponible
+				es_hoy = fecha == fecha_hoy
+				es_pasado = fecha < fecha_hoy
+				es_futuro_lejano = fecha > fecha_maxima
+				es_domingo = fecha.weekday() == 6
+				es_disponible = not es_pasado and not es_futuro_lejano and fecha.weekday() in DIAS_LABORALES
+				
+				if es_disponible:
+					clase_btn = 'bg-white dark:bg-gray-800 hover:bg-primary hover:text-white border-2 border-gray-200 dark:border-gray-700'
+					if es_hoy:
+						clase_btn = 'bg-primary text-white border-2 border-primary'
+					
+					html += f'''
+					<button onclick="document.querySelectorAll('.dia-btn').forEach(b => b.classList.remove('ring-2', 'ring-primary', 'ring-offset-2')); this.classList.add('ring-2', 'ring-primary', 'ring-offset-2'); document.getElementById('fecha-seleccionada').value = '{fecha.isoformat()}'; document.getElementById('horarios-container').classList.remove('hidden');"
+					        class="dia-btn aspect-square flex items-center justify-center rounded-lg {clase_btn} font-semibold text-sm transition-all cursor-pointer">
+						{dia}
+					</button>
+					'''
+				else:
+					html += f'<div class="aspect-square flex items-center justify-center text-gray-300 dark:text-gray-700 text-sm">{dia}</div>'
 	
 	html += '''
 			</div>
 			
+			<p class="text-xs text-gray-500 dark:text-gray-400 mb-4 text-center">
+				Horario: 8:00 - 12:00 hrs | Solo días laborales
+			</p>
+			
 			<div id="horarios-container" class="hidden">
-				<h4 class="font-bold text-gray-700 dark:text-gray-300 mb-3">Selecciona una hora:</h4>
+				<h4 class="font-bold text-gray-700 dark:text-gray-300 mb-3 text-sm">Selecciona una hora:</h4>
 				<div class="grid grid-cols-4 gap-2 mb-6">
 	'''
 	
@@ -422,7 +481,7 @@ def mostrar_calendario(request: HttpRequest) -> HttpResponse:
 	for hora in range(HORA_INICIO_ATENCION, HORA_FIN_ATENCION):
 		html += f'''
 		<button onclick="document.querySelectorAll('.hora-btn').forEach(b => b.classList.remove('bg-primary', 'text-white')); this.classList.add('bg-primary', 'text-white'); document.getElementById('hora-seleccionada').value = '{hora}:00';"
-				class="hora-btn px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-primary hover:text-white transition-colors font-medium text-sm">
+				class="hora-btn px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-primary hover:text-white transition-colors font-medium text-sm">
 			{hora}:00
 		</button>
 		'''
@@ -438,14 +497,14 @@ def mostrar_calendario(request: HttpRequest) -> HttpResponse:
 					<input type="hidden" id="fecha-seleccionada" name="fecha" value="">
 					<input type="hidden" id="hora-seleccionada" name="hora" value="">
 					
-					<button type="button" class="flex-1 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-semibold" 
+					<button type="button" class="flex-1 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-semibold text-sm" 
 							onclick="this.closest('.fixed').remove()">
 						Cancelar
 					</button>
 					<button type="submit" 
-							class="flex-1 py-3 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
-						<span class="material-symbols-outlined">check_circle</span>
-						Confirmar Cita
+							class="flex-1 py-2.5 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm flex items-center justify-center gap-2">
+						<span class="material-symbols-outlined text-lg">check_circle</span>
+						Confirmar
 					</button>
 				</form>
 			</div>
