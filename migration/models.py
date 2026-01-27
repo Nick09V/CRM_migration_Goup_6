@@ -47,11 +47,15 @@ ESTADOS_DOCUMENTO = (
 ESTADO_CARPETA_PENDIENTE = "pendiente"
 ESTADO_CARPETA_APROBADO = "aprobado"
 ESTADO_CARPETA_RECHAZADO = "rechazado"
+ESTADO_CARPETA_CERRADA_ACEPTADA = "cerrada_aceptada"
+ESTADO_CARPETA_CERRADA_RECHAZADA = "cerrada_rechazada"
 
 ESTADOS_CARPETA = (
     (ESTADO_CARPETA_PENDIENTE, "Pendiente"),
     (ESTADO_CARPETA_APROBADO, "Aprobado"),
     (ESTADO_CARPETA_RECHAZADO, "Rechazado"),
+    (ESTADO_CARPETA_CERRADA_ACEPTADA, "Cerrada Aceptada"),
+    (ESTADO_CARPETA_CERRADA_RECHAZADA, "Cerrada Rechazada"),
 )
 
 
@@ -408,6 +412,11 @@ class Carpeta(models.Model):
         max_length=20,
         choices=ESTADOS_CARPETA,
         default=ESTADO_CARPETA_PENDIENTE
+    )
+    observaciones = models.TextField(
+        "Observaciones",
+        blank=True,
+        default=""
     )
     creado_en = models.DateTimeField("Creado en", auto_now_add=True)
 

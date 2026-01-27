@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Steps para la característica de repositorio de documentos autoorganizado.
+Steps para la característica de Gestión de documentos.
 Implementa los pasos BDD para los escenarios de carga de documentos.
 """
 from behave import given, when, then
@@ -323,4 +323,3 @@ def paso_aprobar_documento_anterior(context):
 def paso_verificar_rechazo_subida(context):
     """Verifica que el sistema rechazó la subida."""
     assert context.error is not None, "Debería haber un error de validación"
-
