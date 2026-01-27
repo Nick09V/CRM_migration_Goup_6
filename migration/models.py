@@ -152,3 +152,127 @@ class Cita(models.Model):
         self.fin = self._calcular_fin()
         self.full_clean()
         return super().save(*args, **kwargs)
+
+    def puede_cancelar(self):
+        """Verifica si la cita puede ser cancelada (más de 3 días de anticipación)."""
+        if self.estado != self.ESTADO_PENDIENTE:
+            return False
+        
+        ahora = timezone.now()
+        dias_restantes = (self.inicio - ahora).days
+        return dias_restantes >= 3
+
+
+class Carpeta(models.Model):
+    """Representa el expediente completo de un solicitante."""
+    ESTADO_ABIERTO = "abierto"
+    ESTADO_APROBADO = "aprobado"
+    ESTADO_CERRADO = "cerrado"
+
+    ESTADOS = (
+        (ESTADO_ABIERTO, "Abierto"),
+        (ESTADO_APROBADO, "Aprobado"),
+        (ESTADO_CERRADO, "Cerrado"),
+    )
+
+    solicitante = models.OneToOneField(
+        Solicitante,
+        on_delete=models.CASCADE,
+        related_name="carpeta"
+    )
+    tipo_visa = models.CharField("Tipo de Visa", max_length=50)
+    estado = models.CharField(
+        "Estado",
+        max_length=20,
+        choices=ESTADOS,
+        default=ESTADO_ABIERTO
+    )
+    creada_en = models.DateTimeField("Creada en", auto_now_add=True)
+    actualizada_en = models.DateTimeField("Actualizada en", auto_now=True)
+
+    class Meta:
+        verbose_name = "Carpeta"
+        verbose_name_plural = "Carpetas"
+        ordering = ["-creada_en"]
+
+    def __str__(self):
+        return f"Carpeta de {self.solicitante.nombre} - {self.tipo_visa}"
+
+    def calcular_progreso(self):
+        """Calcula el porcentaje de requisitos completados."""
+        total_requisitos = self.requisitos.count()
+        if total_requisitos == 0:
+            return 0
+        
+        requisitos_revisados = self.requisitos.filter(estado=Requisito.ESTADO_REVISADO).count()
+        return int((requisitos_revisados / total_requisitos) * 100)
+
+
+class Requisito(models.Model):
+    """Representa un requisito documental necesario para una visa."""
+    ESTADO_FALTANTE = "faltante"
+    ESTADO_PENDIENTE = "pendiente"
+    ESTADO_REVISADO = "revisado"
+
+    ESTADOS = (
+        (ESTADO_FALTANTE, "Faltante"),
+        (ESTADO_PENDIENTE, "Pendiente"),
+        (ESTADO_REVISADO, "Revisado"),
+    )
+
+    carpeta = models.ForeignKey(
+        Carpeta,
+        on_delete=models.CASCADE,
+        related_name="requisitos"
+    )
+    nombre = models.CharField("Nombre del Requisito", max_length=150)
+    estado = models.CharField(
+        "Estado",
+        max_length=20,
+        choices=ESTADOS,
+        default=ESTADO_FALTANTE
+    )
+    habilitado_para_subir = models.BooleanField("Habilitado para Subir", default=True)
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Requisito"
+        verbose_name_plural = "Requisitos"
+        ordering = ["nombre"]
+        unique_together = [["carpeta", "nombre"]]
+
+    def __str__(self):
+        return f"{self.nombre} - {self.get_estado_display()}"
+
+
+class Documento(models.Model):
+    """Representa un documento subido para cumplir un requisito."""
+    requisito = models.ForeignKey(
+        Requisito,
+        on_delete=models.CASCADE,
+        related_name="documentos"
+    )
+    archivo = models.FileField("Archivo", upload_to="documentos/%Y/%m/", blank=True, null=True)
+    version = models.PositiveIntegerField("Versión", default=1)
+    observaciones = models.TextField("Observaciones del Agente", blank=True)
+    aprobado = models.BooleanField("Aprobado", default=False)
+    subido_en = models.DateTimeField("Subido en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Documento"
+        verbose_name_plural = "Documentos"
+        ordering = ["-version", "-subido_en"]
+
+    def __str__(self):
+        return f"{self.requisito.nombre} v{self.version}"
+
+    def save(self, *args, **kwargs):
+        """Al guardar un documento, actualiza el estado del requisito."""
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        if is_new:
+            # Actualizar estado del requisito a pendiente cuando se sube documento
+            if self.requisito.estado == Requisito.ESTADO_FALTANTE:
+                self.requisito.estado = Requisito.ESTADO_PENDIENTE
+                self.requisito.save()

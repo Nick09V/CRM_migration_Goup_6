@@ -1,24 +1,238 @@
-{% extends "base.html" %}
-{% block title %}Dashboard | CRM Migration{% endblock %}
+<!DOCTYPE html>
+<html class="light" lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Dashboard Cliente - CRM Migration</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        body {
+            font-family: 'Public Sans', sans-serif;
+        }
+        .sidebar-active {
+            @apply bg-primary/10 text-primary border-r-[3px] border-primary;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#111318] dark:text-white font-display">
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white dark:bg-background-dark border-r border-gray-200 dark:border-gray-800 flex flex-col fixed h-full z-20">
+        <div class="p-6 flex items-center gap-3">
+            <div class="bg-primary p-2 rounded-lg">
+                <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
+                </svg>
+            </div>
+            <div class="flex flex-col">
+                <h1 class="text-base font-bold leading-tight">CRM Migration</h1>
+                <p class="text-xs text-gray-500">Gestión de Visas</p>
+            </div>
+        </div>
+        <nav class="flex-1 mt-4 px-3 space-y-1">
+            <a class="flex items-center gap-3 px-4 py-3 rounded-lg sidebar-active group transition-colors" href="#">
+                <span class="material-symbols-outlined">calendar_today</span>
+                <span class="text-sm font-medium">Mi Cita</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" href="#">
+                <span class="material-symbols-outlined">description</span>
+                <span class="text-sm font-medium">Documentos</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" href="#">
+                <span class="material-symbols-outlined">analytics</span>
+                <span class="text-sm font-medium">Expediente</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative" href="#">
+                <span class="material-symbols-outlined">notifications</span>
+                <span class="text-sm font-medium">Notificaciones</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-200 dark:border-gray-800">
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="flex w-full items-center gap-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                    <span class="material-symbols-outlined">logout</span>
+                    <span class="text-sm font-medium">Cerrar Sesión</span>
+                </button>
+            </form>
+        </div>
+    </aside>
 
-{% block content %}
-<div class="py-10">
-    <h1 class="text-3xl font-bold mb-4">Bienvenido/a</h1>
-    <p class="text-gray-600 mb-6">Resumen rápido del estado de tus trámites y citas.</p>
+    <!-- Main Content -->
+    <main class="flex-1 ml-64 min-h-screen">
+        <header class="sticky top-0 z-10 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-8 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <a class="text-[#616f89] dark:text-gray-400 text-sm font-medium hover:text-primary transition-colors" href="#">Inicio</a>
+                <span class="text-[#616f89] text-sm">/</span>
+                <span class="text-[#111318] dark:text-white text-sm font-medium">Panel del Cliente</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800">
+                    <span class="text-xs font-bold text-primary">Visa: {{ solicitud.tipo_visa }}</span>
+                </div>
+                <div class="flex items-center gap-3 pl-2">
+                    <div class="text-right">
+                        <p class="text-sm font-bold text-[#111318] dark:text-white">{{ user.username }}</p>
+                        <p class="text-xs text-gray-500">{{ user.email }}</p>
+                    </div>
+                    <div class="bg-primary text-white flex items-center justify-center rounded-full size-10 border-2 border-primary/20 font-bold">
+                        {{ user.username|slice:":1"|upper }}
+                    </div>
+                </div>
+            </div>
+        </header>
 
-    <div class="grid gap-4 md:grid-cols-3">
-        <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
-            <p class="text-sm text-gray-500">Citas</p>
-            <p class="text-2xl font-semibold">--</p>
+        <div class="p-8 max-w-[1200px] mx-auto">
+            <div class="mb-8">
+                <h1 class="text-3xl font-black text-[#111318] dark:text-white tracking-tight">Bienvenido, {{ user.username }}</h1>
+                <p class="text-[#616f89] dark:text-gray-400 mt-1">Sigue el progreso de tu solicitud de visa y gestiona tus trámites.</p>
+            </div>
+
+            <div class="grid grid-cols-12 gap-6">
+                <!-- Columna Izquierda -->
+                <div class="col-span-12 lg:col-span-5 flex flex-col gap-6">
+                    
+                    <!-- Card Mi Cita (se actualizará con HTMX) -->
+                    <div id="cita-section">
+                        {% include "partials/cita_card.html" %}
+                    </div>
+
+                    <!-- Card Estado del Expediente -->
+                    <div class="bg-white dark:bg-background-dark p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm" id="expediente-status-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">folder_open</span>
+                                Estado del Expediente
+                            </h2>
+                            <span class="px-2.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-md">{{ solicitud.estado_expediente }}</span>
+                        </div>
+                        <div class="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-bold text-primary uppercase">Progreso</span>
+                                <span class="text-sm font-bold text-primary">{{ solicitud.progreso }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+                                <div class="bg-primary h-full rounded-full transition-all duration-500" style="width: {{ solicitud.progreso }}%"></div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                            Documentos revisados para tu visa tipo <strong>{{ solicitud.tipo_visa }}</strong>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Tabla de Documentos -->
+                <div class="col-span-12 lg:col-span-7">
+                    <div class="bg-white dark:bg-background-dark rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden h-full flex flex-col">
+                        <div class="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <h2 class="text-lg font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">file_present</span>
+                                Mis Documentos
+                            </h2>
+                            <span class="text-xs font-semibold text-gray-500">Última actualización: Hoy</span>
+                        </div>
+                        <div class="flex-1 overflow-x-auto">
+                            {% if documentos %}
+                            <table class="w-full text-left border-collapse" id="docs-table">
+                                <thead>
+                                    <tr class="bg-gray-50 dark:bg-gray-800/50">
+                                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Documento</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Versión</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                    {% for doc in documentos %}
+                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                                        <td class="px-6 py-5">
+                                            <div class="flex items-center gap-3">
+                                                <span class="material-symbols-outlined text-gray-400">description</span>
+                                                <span class="text-sm font-medium">{{ doc.nombre }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-5 text-center">
+                                            <span class="text-xs font-bold px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                                                {% if doc.version > 0 %}v{{ doc.version }}{% else %}-{% endif %}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-5">
+                                            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold uppercase
+                                                {% if doc.estado_code == 'revisado' %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
+                                                {% elif doc.estado_code == 'pendiente' %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400
+                                                {% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %}">
+                                                {{ doc.estado }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-5 text-right">
+                                            {% if doc.estado_code == 'revisado' %}
+                                                <a class="text-primary hover:underline text-sm font-bold transition-colors" href="#">Ver</a>
+                                            {% elif doc.estado_code == 'pendiente' %}
+                                                <span class="text-gray-400 dark:text-gray-600 text-sm font-bold italic">En revisión</span>
+                                            {% else %}
+                                                <button hx-get="{% url 'subir_doc' doc.id %}" 
+                                                        hx-target="#modal-container"
+                                                        class="bg-primary text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">
+                                                    Subir/Reemplazar
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <div class="text-center py-12">
+                                <span class="material-symbols-outlined text-gray-300 mb-4" style="font-size: 64px;">description</span>
+                                <p class="text-gray-400 italic">No hay documentos asignados aún.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="p-6 bg-gray-50 dark:bg-gray-800/30 mt-auto">
+                            <div class="flex items-center gap-3 p-4 bg-primary/5 dark:bg-primary/10 border border-primary/10 rounded-lg">
+                                <span class="material-symbols-outlined text-primary">info</span>
+                                <p class="text-xs text-primary font-medium">
+                                    Las versiones de tus documentos se actualizan automáticamente al subir un nuevo archivo. Formato aceptado: PDF (máx. 10MB).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
-            <p class="text-sm text-gray-500">Documentos pendientes</p>
-            <p class="text-2xl font-semibold">--</p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow border border-gray-100">
-            <p class="text-sm text-gray-500">Solicitudes</p>
-            <p class="text-2xl font-semibold">--</p>
-        </div>
-    </div>
+    </main>
 </div>
-{% endblock %}
+
+<!-- Contenedor para Modales Dinámicos HTMX -->
+<div id="modal-container"></div>
+<div id="cancel-confirm-modal"></div>
+<div id="calendar-modal"></div>
+
+</body>
+</html>

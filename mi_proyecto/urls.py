@@ -17,7 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from migration.views import home_view, login_view, logout_view, dashboard_router
+from migration.views import (
+    home_view, login_view, logout_view, dashboard_router,
+    confirmar_cancelacion, subir_doc, mostrar_calendario, agendar_cita
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -26,4 +29,10 @@ urlpatterns = [
     # Logout solo acepta POST por seguridad (CSRF protection)
     path("logout/", logout_view, name="logout"),
     path("dashboard/", dashboard_router, name="dashboard"),
+    
+    # Vistas HTMX para dashboard de cliente
+    path("cita/confirmar-cancelacion/<int:cita_id>/", confirmar_cancelacion, name="confirmar_cancelacion"),
+    path("cita/calendario/", mostrar_calendario, name="mostrar_calendario"),
+    path("cita/agendar/", agendar_cita, name="agendar_cita"),
+    path("documento/subir/<int:requisito_id>/", subir_doc, name="subir_doc"),
 ]
