@@ -21,12 +21,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-esz$4t(0gd51_vo5noh#dox6tv=j2w@$i+5s#l=!j)2%d(urf-'
+# En producción, usar variable de entorno: SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-esz$4t(0gd51_vo5noh#dox6tv=j2w@$i+5s#l=!j)2%d(urf-'  # Solo para desarrollo
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = []
+# En producción, configurar hosts permitidos
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
 # Application definition
@@ -129,9 +134,12 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+# Cambiar a español ya que la UI está en español
+LANGUAGE_CODE = 'es'
 
-TIME_ZONE = 'UTC'
+# Cambiar a zona horaria local (Bogotá, Colombia)
+# Para otro país, usar: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+TIME_ZONE = 'America/Bogota'
 
 USE_I18N = True
 
@@ -144,6 +152,68 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 STATICFILES_DIRS = [ BASE_DIR / 'static' ,]
+
+# ===== Configuración de Autenticación =====
+# URL por defecto para login (usado por @login_required)
+LOGIN_URL = 'login'
+
+# URL por defecto después de login exitoso
+LOGIN_REDIRECT_URL = 'dashboard'
+
+# URL para logout
+LOGOUT_REDIRECT_URL = 'login'
+
+# ===== Configuración de Logging =====
+# Registra intentos de login, errores y eventos de seguridad
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '[{levelname}] {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        'file': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'maxBytes': 1024 * 1024 * 15,  # 15MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'migration': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
 
 # behave-django settings
 BEHAVE = {

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Agente | CRM Migration{% endblock %}
+
+{% block content %}
+{% include "partials/navbar.html" %}
+
+<div class="flex h-[calc(100vh-65px)] overflow-hidden">
+
+    {% include "partials/sidebar.html" %}
+
+    <main class="flex-1 overflow-y-auto p-8 bg-background-light dark:bg-background-dark/50">
+        <div class="max-w-[1200px] mx-auto space-y-8">
+
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Dashboard Agente</h1>
+                    <p class="text-slate-500 text-sm">Gestión de agenda y revisión de casos.</p>
+                </div>
+            
+                <div class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+                    
+                    <div class="bg-primary/10 text-primary size-10 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined">pending_actions</span>
+                    </div>
+            
+                    <div>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Carga Pendiente</p>
+                        
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-2xl font-bold text-slate-900 dark:text-white">
+                                {{ total_pendientes }}
+                            </span>
+            
+                            {% if total_pendientes > 0 %}
+                                <span class="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                    Revisión Urgente
+                                </span>
+                            {% else %}
+                                <span class="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[10px]">check</span>
+                                    Todo al día
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex items-center justify-between px-1">
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">calendar_month</span>
+                        Agenda Operativa
+                    </h3>
+                    <div class="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
+                        <button id="btn-prev" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500">
+                            <span class="material-symbols-outlined text-lg">chevron_left</span>
+                        </button>
+                        <button id="btn-next" class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500">
+                            <span class="material-symbols-outlined text-lg">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-background-dark rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm overflow-hidden">
+
+                    <div class="flex justify-between items-end mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <div class="flex gap-4 text-[10px] uppercase font-bold text-slate-500">
+                            <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Pendiente</div>
+                            <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Completada</div>
+                        </div>
+                        <span class="text-xs font-bold text-slate-400 uppercase">
+                            {{ mes_actual|date:"F Y" }}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2" id="calendar-scroll">
+                        {% for dia in dias_calendario %}
+                            {% if dia.es_hoy %}
+                                <div class="flex flex-col items-center justify-center min-w-[4.5rem] p-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/30 transform scale-105 transition-transform cursor-pointer">
+                                    <span class="text-[10px] uppercase tracking-wider font-bold opacity-80 mb-1">Hoy</span>
+                                    <span class="text-2xl font-bold">{{ dia.fecha|date:"d" }}</span>
+
+                                    <div class="flex flex-wrap justify-center gap-1 mt-2 min-h-[6px] max-w-[40px]">
+                                        {% for estado in dia.estados %}
+                                            <span class="w-1.5 h-1.5 rounded-full {% if estado == 'pendiente' %}bg-amber-300{% elif estado == 'exitosa' or estado == 'realizada' %}bg-emerald-300{% else %}bg-rose-300{% endif %}"></span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="flex flex-col items-center justify-center min-w-[4.5rem] p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-slate-500 hover:border-slate-300 transition-colors cursor-pointer group">
+                                    <span class="text-[10px] uppercase tracking-wider font-bold mb-1">{{ dia.fecha|date:"D"|slice:":3" }}</span>
+                                    <span class="text-xl font-medium group-hover:text-primary">{{ dia.fecha|date:"d" }}</span>
+
+                                    <div class="flex flex-wrap justify-center gap-1 mt-2 min-h-[6px] max-w-[40px]">
+                                        {% for estado in dia.estados %}
+                                            <span class="w-1.5 h-1.5 rounded-full {% if estado == 'pendiente' %}bg-amber-500{% elif estado == 'exitosa' or estado == 'realizada' %}bg-emerald-500{% else %}bg-rose-500{% endif %}"></span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">groups</span>
+                    Casos Activos
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                    {% for cita in proximas_citas %}
+                    <div class="bg-white dark:bg-background-dark rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold">
+                                    {{ cita.solicitante.nombre|slice:":2"|upper }}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-slate-900 dark:text-white">
+                                        {{ cita.solicitante.nombre }}
+                                    </p>
+                                    <p class="text-xs text-slate-500">ID: #{{ cita.solicitante.id }}</p>
+                                </div>
+                            </div>
+                            <span class="inline-flex px-2 py-1 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-100">
+                                {{ cita.get_estado_display }}
+                            </span>
+                        </div>
+
+                        <div class="space-y-3 mb-5">
+                            <div>
+                                <p class="text-xs text-slate-500 font-medium mb-1">Fecha de Cita</p>
+                                <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                    {{ cita.inicio|date:"l d F, H:i" }}
+                                </p>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-500">Progreso</span>
+                                    <span class="font-bold text-primary">Inicio</span>
+                                </div>
+                                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                    <div class="bg-primary h-1.5 rounded-full w-[10%]"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <a href="{% url 'cita_detalle' cita.id %}"
+                            class="w-full py-2.5 bg-white border border-primary text-primary hover:bg-primary hover:text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-sm">folder_open</span>
+                            Gestionar Cita
+                        </a>
+                    </div>
+                    {% empty %}
+                    <div class="col-span-3 text-center py-10 text-slate-500 bg-white dark:bg-background-dark rounded-xl border border-dashed border-slate-300">
+                        <span class="material-symbols-outlined text-4xl mb-2 text-slate-300">event_busy</span>
+                        <p>No tienes citas pendientes asignadas por ahora.</p>
+                    </div>
+                    {% endfor %}
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const container = document.getElementById('calendar-scroll');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+
+        // 1. Centrar el día "HOY" al cargar el dashboard 
+        if (container) {
+            // Desplazamos lo suficiente para que "HOY" quede visible
+            container.scrollLeft = 850;
+        }
+
+        // 2. Lógica del botón Atrás
+        if (btnPrev && container) {
+            btnPrev.addEventListener('click', () => {
+                container.scrollBy({ left: -300, behavior: 'smooth' });
+            });
+        }
+
+        // 3. Lógica del botón Adelante
+        if (btnNext && container) {
+            btnNext.addEventListener('click', () => {
+                container.scrollBy({ left: 300, behavior: 'smooth' });
+            });
+        }
+    });
+</script>
+
+{% endblock %}

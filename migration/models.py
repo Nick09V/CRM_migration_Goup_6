@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
+import os
 
 # Constantes de reglas de negocio
 HORA_INICIO_ATENCION = 8
@@ -423,6 +424,23 @@ class Requisito(models.Model):
             self.estado = documento_actual.estado
             self.save(update_fields=["estado"])
 
+def generar_ruta_documento(instance, filename):
+    """
+    Calcula la ruta donde se guardará el archivo físico.
+    Estructura: Documentos/Cedula/TipoVisa/Requisito/vN_nombre.pdf
+    """
+    solicitante = instance.requisito.solicitante
+    cedula = solicitante.cedula or "SIN_CEDULA"
+    # Limpieza de espacios y caracteres raros para evitar errores en rutas
+    tramite = (solicitante.tipo_visa or "GENERAL").replace(" ", "_")
+    nombre_req = instance.requisito.nombre.replace(" ", "_")
+    
+    # Construir el nombre final: v1_Pasaporte.pdf
+    extension = filename.split('.')[-1]
+    nuevo_nombre = f"v{instance.version}_{nombre_req}.{extension}"
+    
+    return f"Documentos/{cedula}/{tramite}/{nombre_req}/{nuevo_nombre}"
+
 
 class Documento(models.Model):
     """Representa un documento subido por el solicitante."""
@@ -432,6 +450,15 @@ class Documento(models.Model):
         related_name="documentos"
     )
     version = models.PositiveIntegerField("Versión", default=1)
+    
+    # FileField en lugar de CharField
+    archivo = models.FileField(
+        upload_to=generar_ruta_documento, 
+        blank=True, 
+        null=True,
+        verbose_name="Archivo subido"
+    )
+    
     estado = models.CharField(
         "Estado",
         max_length=20,

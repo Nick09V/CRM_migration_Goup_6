@@ -1,0 +1,109 @@
+<div id="card-req-{{ req.id }}" 
+     class="rounded-xl border p-5 flex flex-col justify-between h-full transition-all duration-300 shadow-sm
+     {% if req.estado == 'revisado' %}
+        bg-emerald-50 border-emerald-200
+     {% elif req.estado == 'faltante' and req.obtener_documento_actual.es_version_rechazada %}
+        bg-rose-50 border-rose-200
+     {% else %}
+        bg-white border-slate-200
+     {% endif %}">
+
+    <div class="flex justify-between items-start mb-3">
+        <div class="p-2 rounded-lg 
+            {% if req.estado == 'revisado' %}bg-emerald-100 text-emerald-600
+            {% elif req.estado == 'faltante' and req.obtener_documento_actual.es_version_rechazada %}bg-rose-100 text-rose-600
+            {% else %}bg-blue-50 text-blue-600{% endif %}">
+            <span class="material-symbols-outlined text-xl">
+                {% if 'Pasaporte' in req.nombre %}menu_book
+                {% elif 'Foto' in req.nombre %}face
+                {% elif 'Cuenta' in req.nombre %}account_balance
+                {% else %}description{% endif %}
+            </span>
+        </div>
+
+        {% if req.estado == 'revisado' %}
+            <span class="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>
+        {% elif req.estado == 'faltante' and req.obtener_documento_actual.es_version_rechazada %}
+            <span class="material-symbols-outlined text-rose-500 text-lg">cancel</span>
+        {% elif req.obtener_documento_actual %}
+            <span class="size-2 bg-amber-400 rounded-full animate-pulse" title="Pendiente de Revisión"></span>
+        {% endif %}
+    </div>
+
+    <div class="mb-4">
+        <h4 class="font-bold text-slate-800 text-sm mb-1">{{ req.nombre }}</h4>
+        
+        {% if req.obtener_documento_actual %}
+            <p class="text-[10px] text-slate-500 flex items-center gap-1">
+                Subido: {{ req.obtener_documento_actual.creado_en|date:"d M, H:i" }}
+            </p>
+            
+            {% if req.estado == 'revisado' %}
+                <p class="text-xs text-emerald-600 mt-1 font-medium">Validado correctamente</p>
+            {% elif req.estado == 'faltante' and req.obtener_documento_actual.es_version_rechazada %}
+                <p class="text-xs text-rose-600 mt-1 font-medium">Rechazado: Debe volver a subir</p>
+            {% else %}
+                <p class="text-xs text-slate-400 mt-1">
+                    v{{ req.obtener_documento_actual.version }} • 
+                    {{ req.obtener_documento_actual.archivo.size|filesizeformat }}
+                </p>
+            {% endif %}
+
+        {% else %}
+            <p class="text-xs text-slate-400 italic mt-2">Esperando carga del cliente...</p>
+        {% endif %}
+    </div>
+
+    <div class="mt-auto">
+        {% if req.obtener_documento_actual %}
+            
+            {% if req.estado == 'revisado' %}
+                <a href="{{ req.obtener_documento_actual.archivo.url }}" target="_blank" 
+                   class="w-full py-2 bg-white border border-emerald-200 text-emerald-600 text-xs font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-emerald-50 transition-colors">
+                   Ver Archivo
+                </a>
+                <button hx-post="{% url 'procesar_documento' req.id 'rechazar' %}" 
+                        hx-target="#card-req-{{ req.id }}" hx-swap="outerHTML"
+                        class="w-full mt-2 text-[10px] text-slate-400 underline hover:text-rose-500">
+                    Deshacer validación
+                </button>
+
+            {% elif req.estado == 'faltante' and req.obtener_documento_actual.es_version_rechazada %}
+                <a href="{{ req.obtener_documento_actual.archivo.url }}" target="_blank"
+                   class="w-full py-2 bg-white border border-rose-200 text-rose-600 text-xs font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-rose-50 transition-colors mb-2">
+                   Ver Archivo
+                </a>
+                <div class="text-center text-[10px] text-rose-400 font-bold uppercase">Esperando nueva versión</div>
+
+            {% else %}
+                <a href="{{ req.obtener_documento_actual.archivo.url }}" target="_blank"
+                   class="block w-full text-center text-xs font-bold text-blue-600 hover:underline mb-3 flex items-center justify-center gap-1">
+                   <span class="material-symbols-outlined text-sm">visibility</span>
+                   Ver PDF
+                </a>
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <button 
+                        hx-post="{% url 'procesar_documento' req.id 'aprobar' %}"
+                        hx-target="#card-req-{{ req.id }}"
+                        hx-swap="outerHTML"
+                        class="py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-sm shadow-emerald-200 transition-all active:scale-95">
+                        Aprobar
+                    </button>
+                    <button 
+                        hx-post="{% url 'procesar_documento' req.id 'rechazar' %}"
+                        hx-target="#card-req-{{ req.id }}"
+                        hx-swap="outerHTML"
+                        class="py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg shadow-sm shadow-rose-200 transition-all active:scale-95">
+                        Rechazar
+                    </button>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <button disabled class="w-full py-2 bg-slate-100 text-slate-400 text-xs font-bold rounded-lg cursor-not-allowed">
+                Sin Archivo
+            </button>
+        {% endif %}
+    </div>
+</div>

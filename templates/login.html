@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Login | CRM Migration{% endblock %}
+
+{% block content %}
+<!-- login.html: Formulario de autenticación con soporte HTMX -->
+<div class="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
+
+    <!-- Contenedor Principal (Card) -->
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-100">
+
+        <!-- Logo y Header -->
+        <div class="text-center mb-8">
+            <div class="bg-blue-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+
+                <span class="material-symbols-outlined text-blue-600 text-[40px]">
+                    flight_takeoff
+                </span>
+
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900">CRM MigraFlow</h1>
+            <p class="text-gray-500 mt-2">Acceso al Sistema de Gestión de Visas</p>
+        </div>
+
+        <!-- Slot para alertas de HTMX (login-alert-slot) -->
+        <!-- Renderiza mensajes Django iniciales o errores HTMX -->
+        <div id="login-alert-slot" class="mb-4">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="p-3 rounded-lg text-sm {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Formulario con HTMX -->
+        <!-- hx-post: Petición HTMX POST a URL login
+             hx-target: Reemplazar contenido de #login-alert-slot en caso de error
+             hx-indicator: Mostrar spinner durante petición
+             hx-disable-elt: Deshabilitar botón durante petición
+             hx-timeout: Timeout de 30 segundos
+        -->
+        <form hx-post="{% url 'login' %}"
+              hx-target="#login-alert-slot"
+              hx-indicator="#login-spinner"
+              hx-disable-elt="button"
+              hx-timeout="30000"
+              class="space-y-6">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Email o Usuario</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    </span>
+                    <input type="text" name="username" required minlength="3" maxlength="150"
+                           class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                           placeholder="Introduce tu usuario o correo">
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between mb-2">
+                    <label class="text-sm font-semibold text-gray-700">Contraseña</label>
+                    <a href="#" class="text-sm font-semibold text-blue-600 hover:text-amber-600">¿Olvidaste tu
+                        contraseña?</a>
+                </div>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path
+                                stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </span>
+                    <input type="password" name="password" required minlength="1"
+                           class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                           placeholder="••••••••">
+                </div>
+            </div>
+
+            <!-- Botón con estado de carga -->
+            <!-- Muestra "Entrar" en reposo, spinner durante petición HTMX -->
+            <button type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center relative disabled:cursor-not-allowed">
+                <span class="htmx-indicator-hidden">Entrar</span>
+                <div id="login-spinner" class="htmx-indicator absolute">
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                         viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </button>
+        </form>
+
+        <!-- Soporte Operativo Info -->
+        <div class="mt-10 pt-6 border-t border-gray-100 text-center">
+            <span class="text-xs font-bold text-gray-400 tracking-widest uppercase">Soporte Operativo</span>
+            <div class="mt-4 flex flex-col gap-2 text-xs text-gray-500">
+                <div class="flex items-center justify-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    Visas: Estudiantil, Trabajo, Residencial
+                </div>
+                <div class="flex items-center justify-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    Estados: Pendiente, Completada, Cancelada
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Académico -->
+    <footer class="mt-12 text-center">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">2026 - Todos los derechos
+            reservados</p>
+        <div class="mt-2 w-12 h-1 bg-blue-200 mx-auto rounded-full"></div>
+    </footer>
+</div>
+{% endblock %}
