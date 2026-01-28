@@ -1,0 +1,103 @@
+<div id="version-history-drawer" class="fixed inset-0 z-[60] flex justify-end transition-opacity duration-300">
+    
+    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px]" 
+         onclick="cerrarDrawer()"></div>
+
+    <div class="relative w-full max-w-md h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 transform transition-transform duration-300 translate-x-0 animate-slide-in-right">
+        
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Historial de Versiones</h2>
+                <p class="text-xs text-slate-500 font-medium mt-0.5">Documento: {{ req.nombre }}</p>
+            </div>
+            <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" 
+                    onclick="cerrarDrawer()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <div class="relative border-l-2 border-slate-200 dark:border-slate-800 ml-3 space-y-10 py-2">
+                
+                {% for doc in documentos %}
+                <div class="relative pl-8 group">
+                    <span class="absolute -left-[9px] top-0 h-4 w-4 rounded-full ring-4 ring-white dark:ring-slate-900 flex items-center justify-center
+                        {% if doc.estado == 'revisado' %}bg-emerald-500
+                        {% elif doc.estado == 'faltante' %}bg-rose-500
+                        {% else %}bg-slate-300{% endif %}">
+                        {% if forloop.first %}
+                            <span class="h-1.5 w-1.5 rounded-full bg-white"></span>
+                        {% endif %}
+                    </span>
+
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="inline-flex items-center gap-2 mb-1">
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">
+                                    v{{ doc.version }}.0 {% if forloop.first %}(Actual){% endif %}
+                                </span>
+                                
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide
+                                    {% if doc.estado == 'revisado' %}bg-emerald-100 text-emerald-700
+                                    {% elif doc.estado == 'faltante' %}bg-rose-100 text-rose-700
+                                    {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                    {{ doc.get_estado_display }}
+                                </span>
+                            </span>
+
+                            <div class="text-xs text-slate-500 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                                {{ doc.creado_en|date:"d M Y, h:i A" }}
+                            </div>
+                            
+                            <div class="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                                {% if doc.estado == 'pendiente' %}
+                                    <span class="font-medium text-slate-900 dark:text-white">Subido por:</span> {{ req.solicitante.nombre }}
+                                {% else %}
+                                    <span class="font-medium text-slate-900 dark:text-white">Gestión:</span> Agente
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <a href="{{ doc.archivo.url }}" target="_blank" class="text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-lg transition-colors" title="Ver archivo">
+                            <span class="material-symbols-outlined text-lg">visibility</span>
+                        </a>
+                    </div>
+
+                    {% if doc.estado == 'faltante' and forloop.first and req.observaciones %}
+                    <div class="bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800 rounded-lg p-3 text-xs mt-2">
+                        <p class="font-bold text-rose-700 dark:text-rose-400 mb-1 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">error</span>
+                            Motivo del rechazo:
+                        </p>
+                        <p class="text-slate-600 dark:text-slate-300 italic">
+                            "{{ req.observaciones }}"
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                    <p class="text-sm text-slate-400 italic pl-8">No hay versiones anteriores.</p>
+                {% endfor %}
+
+            </div>
+        </div>
+
+        {% if documentos.first %}
+        <div class="p-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <a href="{{ documentos.first.archivo.url }}" download 
+               class="w-full py-2.5 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">download</span>
+                Descargar Versión Actual
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function cerrarDrawer() {
+        const drawer = document.getElementById('version-history-drawer');
+        if(drawer) drawer.remove();
+    }
+</script>

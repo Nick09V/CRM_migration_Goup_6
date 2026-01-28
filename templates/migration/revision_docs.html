@@ -11,53 +11,55 @@
     <main class="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-background-dark/50">
         <div class="max-w-7xl mx-auto space-y-8">
 
-            <a href="{% url 'dashboard' %}" class="inline-flex items-center gap-2 text-slate-500 hover:text-primary transition-colors text-sm font-bold">
+            <a href="{% url 'dashboard' %}"
+                class="inline-flex items-center gap-2 text-slate-500 hover:text-primary transition-colors text-sm font-bold">
                 <span class="material-symbols-outlined text-lg">arrow_back</span>
                 Volver al Dashboard
             </a>
 
-            <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
-                
+            <div class="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
+
                 <div class="flex items-center gap-5 w-full md:w-auto">
-                    <div class="size-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold border-4 border-white shadow-sm ring-1 ring-slate-100">
+                    <div class="size-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold border-4 border-white dark:border-slate-800 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
                         {{ solicitante.nombre|slice:":2"|upper }}
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-slate-900">{{ solicitante.nombre }}</h1>
+                        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">{{ solicitante.nombre }}</h1>
                         <div class="flex gap-4 text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider">
                             <span class="flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm">badge</span> 
+                                <span class="material-symbols-outlined text-sm">badge</span>
                                 Visa {{ solicitante.tipo_visa|default:"General" }}
                             </span>
                             <span class="flex items-center gap-1">
-                                <span class="material-symbols-outlined text-sm">folder_open</span> 
+                                <span class="material-symbols-outlined text-sm">folder_open</span>
                                 Exp #{{ solicitante.id }}9021-X
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div class="w-full md:w-1/3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div class="w-full md:w-1/3 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
                     <div class="flex justify-between text-xs font-bold uppercase tracking-wider mb-2">
                         <span class="text-slate-500">Progreso Documental</span>
                         <span class="text-primary">{{ progreso }}%</span>
                     </div>
-                    <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                        <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-1000" style="width: {{ progreso }}%"></div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-1000"
+                            style="width: {{ progreso }}%"></div>
                     </div>
                 </div>
             </div>
 
             <div class="flex justify-between items-center">
-                <h2 class="text-lg font-bold flex items-center gap-2 text-slate-800">
+                <h2 class="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-white">
                     <span class="material-symbols-outlined text-blue-600">grid_view</span>
                     Documentos Requeridos
                 </h2>
-                
-                <div class="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
-                    <button class="px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700 rounded shadow-sm">Todo</button>
-                    <button class="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded transition-colors">Aprobados</button>
-                    <button class="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded transition-colors">Rechazados</button>
+
+                <div class="flex bg-white dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <button class="px-3 py-1.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded shadow-sm">Todo</button>
+                    <button class="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-colors">Aprobados</button>
+                    <button class="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-colors">Rechazados</button>
                 </div>
             </div>
 
@@ -76,4 +78,66 @@
         </div>
     </main>
 </div>
+
+<div id="modal-rechazo" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="cerrarModal()"></div>
+
+    <div class="relative bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6 transform scale-100 transition-all">
+
+        <div class="text-center mb-6">
+            <div class="size-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="material-symbols-outlined text-2xl">gavel</span>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Rechazar Documento</h3>
+            <p class="text-sm text-slate-500">Explica al cliente por qué el documento no es válido.</p>
+        </div>
+
+        <form hx-post="{% url 'rechazar_documento_form' %}" 
+              hx-trigger="submit" 
+              hx-swap="none"
+              hx-on:htmx:after-request="cerrarModal()">
+
+            {% csrf_token %}
+
+            <input type="hidden" name="requisito_id" id="input-req-id">
+
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase">
+                    Motivo del rechazo
+                </label>
+                <textarea name="motivo" rows="3" required
+                    class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-rose-500 focus:border-rose-500 placeholder:text-slate-400"
+                    placeholder="Ej: La imagen está borrosa, documento vencido..."></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" onclick="cerrarModal()"
+                    class="py-2.5 bg-slate-100 text-slate-600 font-bold rounded-lg hover:bg-slate-200 transition-colors text-sm">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="py-2.5 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700 shadow-lg shadow-rose-200 transition-colors text-sm flex items-center justify-center gap-2">
+                    <span>Confirmar Rechazo</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="contenedor-drawer"></div>
+
+<script>
+    function abrirModalRechazo(id) {
+        // 1. Pasamos el ID al input oculto
+        document.getElementById('input-req-id').value = id;
+        // 2. Mostramos el modal
+        document.getElementById('modal-rechazo').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modal-rechazo').classList.add('hidden');
+        document.querySelector('textarea[name="motivo"]').value = '';
+    }
+</script>
+
 {% endblock %}

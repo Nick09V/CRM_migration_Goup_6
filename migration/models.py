@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 import os
+import unicodedata 
 
 # Constantes de reglas de negocio
 HORA_INICIO_ATENCION = 8
@@ -217,9 +218,27 @@ class Solicitante(models.Model):
         """Verifica si el solicitante tiene una cita pendiente."""
         return self.citas.filter(estado='pendiente').exists()
 
+    def obtener_progreso(self):
+        """Calcula el porcentaje de documentos revisados."""
+        total = self.requisitos.count()
+        if total == 0:
+            return 0
+        
+        # OJO: Asegúrate que 'revisado' es exactamente como lo guardas en BD (minúsculas)
+        aprobados = self.requisitos.filter(estado='revisado').count()
+        
+        return int((aprobados / total) * 100)
+
 
 class Agente(models.Model):
     """Representa a un agente que atiende citas."""
+    usuario = models.OneToOneField(
+        User, 
+        on_delete=models.CASCADE,
+        related_name='agente', 
+        null=True,
+        blank=True
+    )
     nombre = models.CharField("Nombre", max_length=120)
     activo = models.BooleanField("Activo", default=True)
 
@@ -426,16 +445,44 @@ class Requisito(models.Model):
 
 def generar_ruta_documento(instance, filename):
     """
-    Calcula la ruta donde se guardará el archivo físico.
+    Calcula la ruta física donde se guardará el archivo.
     Estructura: Documentos/Cedula/TipoVisa/Requisito/vN_nombre.pdf
     """
     solicitante = instance.requisito.solicitante
     cedula = solicitante.cedula or "SIN_CEDULA"
-    # Limpieza de espacios y caracteres raros para evitar errores en rutas
+    
+    # Limpiamos espacios para evitar errores en URLs
     tramite = (solicitante.tipo_visa or "GENERAL").replace(" ", "_")
     nombre_req = instance.requisito.nombre.replace(" ", "_")
     
-    # Construir el nombre final: v1_Pasaporte.pdf
+    # Obtenemos la extensión original (.pdf, .jpg)
+    extension = filename.split('.')[-1]
+    
+    # Construimos el nombre final: v1_Pasaporte.pdf
+    nuevo_nombre = f"v{instance.version}_{nombre_req}.{extension}"
+    
+    return f"Documentos/{cedula}/{tramite}/{nombre_req}/{nuevo_nombre}"
+
+
+# ============================================================================
+# FUNCIÓN AUXILIAR (Debe ir ANTES de la clase Documento)
+# ============================================================================
+
+
+# ...
+
+def generar_ruta_documento(instance, filename):
+    solicitante = instance.requisito.solicitante
+    cedula = solicitante.cedula or "SIN_CEDULA"
+    
+    # Función auxiliar para limpiar acentos (tíldes)
+    def limpiar(texto):
+        texto = texto.replace(" ", "_")
+        return ''.join((c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn'))
+
+    tramite = limpiar(solicitante.tipo_visa or "GENERAL")
+    nombre_req = limpiar(instance.requisito.nombre)
+    
     extension = filename.split('.')[-1]
     nuevo_nombre = f"v{instance.version}_{nombre_req}.{extension}"
     
@@ -451,7 +498,7 @@ class Documento(models.Model):
     )
     version = models.PositiveIntegerField("Versión", default=1)
     
-    # FileField en lugar de CharField
+
     archivo = models.FileField(
         upload_to=generar_ruta_documento, 
         blank=True, 
@@ -465,8 +512,7 @@ class Documento(models.Model):
         choices=ESTADOS_DOCUMENTO,
         default=ESTADO_DOCUMENTO_PENDIENTE
     )
-    nombre_archivo = models.CharField("Nombre Archivo", max_length=255, blank=True)
-    ruta_archivo = models.CharField("Ruta Archivo", max_length=500, blank=True)
+    
     creado_en = models.DateTimeField("Creado en", auto_now_add=True)
 
     class Meta:
@@ -483,20 +529,13 @@ class Documento(models.Model):
     def __str__(self):
         return f"{self.requisito.nombre} v{self.version} - {self.estado}"
 
-    def obtener_ruta_completa(self) -> str:
-        """
-        Genera la ruta completa del documento según la estructura definida.
-        Estructura: Documentos/CI_solicitante/tipoVisa/documentoCarpeta/version_n/
+    # --- MÉTODOS ÚTILES ---
 
-        Returns:
-            Ruta completa del documento.
-        """
-        solicitante = self.requisito.solicitante
-        cedula = solicitante.cedula or "SIN_CEDULA"
-        tipo_visa = solicitante.tipo_visa or "SIN_VISA"
-        nombre_requisito = self.requisito.nombre.replace(" ", "_")
-
-        return f"Documentos/{cedula}/{tipo_visa}/{nombre_requisito}/version_{self.version}"
+    def obtener_url(self):
+        """Retorna la URL pública para ver el archivo en el navegador."""
+        if self.archivo:
+            return self.archivo.url
+        return "#"
 
     def es_version_pendiente(self) -> bool:
         """Verifica si el documento está en estado pendiente."""
@@ -520,6 +559,7 @@ class Documento(models.Model):
         """Marca el documento como faltante/rechazado."""
         self.estado = ESTADO_DOCUMENTO_FALTANTE
         self.save(update_fields=["estado"])
+
 
 
 class Carpeta(models.Model):

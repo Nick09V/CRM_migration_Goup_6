@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from migration import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 from migration.views import home_view, login_view, logout_view, dashboard_router
 
@@ -37,5 +39,13 @@ urlpatterns = [
     path('revision/<int:solicitante_id>/', views.revision_documentos, name='revision_documentos'),
     path('procesar-doc/<int:requisito_id>/<str:accion>/', views.procesar_documento, name='procesar_documento'),
     path('documentos-pendientes/', views.lista_documentos_pendientes, name='documentos_pendientes'),
+    path('documento/aprobar/<int:requisito_id>/', views.aprobar_documento, name='aprobar_documento'),
+    path('documento/rechazar-form/', views.rechazar_documento_modal, name='rechazar_documento_form'),
+    path('documento/historial/<int:requisito_id>/', views.historial_versiones, name='historial_versiones'),
+    path('clientes/', views.lista_clientes, name='lista_clientes'),
+    path('mis-citas/', views.mis_citas, name='mis_citas'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

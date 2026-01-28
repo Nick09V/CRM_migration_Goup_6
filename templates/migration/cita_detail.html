@@ -119,11 +119,8 @@
                                 <p class="text-xs font-bold text-slate-400 uppercase mb-2">Sugerencias Comunes</p>
                                 
                                 <div id="resultados-busqueda" class="max-h-[300px] overflow-y-auto pr-2">
-                                    <div class="animate-pulse flex space-x-4 p-4">
-                                        <div class="flex-1 space-y-4 py-1">
-                                            <div class="h-4 bg-slate-200 rounded w-3/4"></div>
-                                            <div class="h-4 bg-slate-200 rounded"></div>
-                                        </div>
+                                    <div class="p-4 text-center text-slate-400 italic text-xs">
+                                        Escriba para buscar documentos...
                                     </div>
                                 </div>
                             </div>
@@ -145,46 +142,46 @@
                                 </div>
                             </div>
 
-                            <div id="lista-requisitos-derecha" class="p-0 flex-1 overflow-y-auto max-h-[400px]">
-                                {% if cita.solicitante.requisitos.all %}
-                                    <ul class="divide-y divide-slate-100 dark:divide-slate-800">
-                                        {% for req in cita.solicitante.requisitos.all %}
-                                        <li class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                                            
-                                            <div class="flex items-center gap-3">
-                                                <div class="bg-slate-100 dark:bg-slate-700 text-slate-500 p-2 rounded-lg">
-                                                    <span class="material-symbols-outlined text-sm">description</span>
-                                                </div>
-                                                <div>
-                                                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                                        {{ req.nombre|title }}
-                                                    </p>
-                                                    <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded 
-                                                        {% if req.estado == 'faltante' %}bg-rose-100 text-rose-600
-                                                        {% elif req.estado == 'pendiente' %}bg-amber-100 text-amber-600
-                                                        {% else %}bg-emerald-100 text-emerald-600{% endif %}">
-                                                        {{ req.get_estado_display }}
-                                                    </span>
-                                                </div>
+                            <div id="lista-requisitos" class="p-2 flex-1 overflow-y-auto max-h-[400px] space-y-2">
+                                
+                                {% for req in cita.solicitante.requisitos.all %}
+                                    <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-colors group">
+                                        <div class="flex items-center gap-3">
+                                            <div class="p-2 bg-slate-100 text-slate-500 rounded-lg">
+                                                <span class="material-symbols-outlined text-lg">description</span>
                                             </div>
-                            
-                                            <button 
-                                                hx-post="{% url 'eliminar_requisito' req.id %}"
-                                                hx-target="#lista-requisitos-derecha"
-                                                hx-confirm="¿Estás seguro de quitar este requisito?"
-                                                class="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"
-                                                title="Eliminar requisito">
-                                                <span class="material-symbols-outlined text-lg">delete</span>
-                                            </button>
-                            
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    <div class="p-10 text-center text-slate-400">
-                                        <p class="text-sm italic">Seleccione un tipo de visa para generar los requisitos.</p>
+                                            <div>
+                                                <p class="text-sm font-bold text-slate-700">{{ req.nombre }}</p>
+                                                
+                                                {% if req.estado == 'faltante' %}
+                                                    <span class="text-[10px] font-bold px-2 py-1 rounded bg-rose-100 text-rose-600 uppercase">Faltante</span>
+                                                {% elif req.estado == 'pendiente' %}
+                                                    <span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 text-amber-600 uppercase">Revisión</span>
+                                                {% else %}
+                                                    <span class="text-[10px] font-bold px-2 py-1 rounded bg-emerald-100 text-emerald-600 uppercase">OK</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <button 
+                                            hx-post="{% url 'eliminar_requisito' req.id %}"
+                                            hx-target="#lista-requisitos"
+                                            hx-confirm="¿Estás seguro de quitar este requisito?"
+                                            class="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"
+                                            title="Eliminar requisito">
+                                            <span class="material-symbols-outlined text-lg">delete</span>
+                                        </button>
                                     </div>
-                                {% endif %}
+                                {% empty %}
+                                    <div class="p-10 text-center text-slate-400">
+                                        <div class="bg-slate-50 size-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <span class="material-symbols-outlined text-3xl">folder_off</span>
+                                        </div>
+                                        <p class="text-sm font-bold text-slate-500">Carpeta Vacía</p>
+                                        <p class="text-xs italic mt-1">Seleccione un trámite o agregue documentos manualmente.</p>
+                                    </div>
+                                {% endfor %}
+
                             </div>
                             
                             <div class="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 rounded-b-xl space-y-3">

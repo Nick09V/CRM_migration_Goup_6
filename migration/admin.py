@@ -42,18 +42,17 @@ class CitaAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'estado', 'inicio', 'fin')
     search_fields = ('solicitante__nombre', 'agente__nombre')
     list_filter = ('estado', 'inicio')
-    readonly_fields = ('fin', 'creada_en')
+    readonly_fields = ('fin', 'creado_en')
     
     fieldsets = (
         ('Información de la Cita', {
-            # Nota: Ya no va 'tipo_tramite' ni 'detalle' aquí porque eso cambió en el modelo nuevo
             'fields': ('solicitante', 'agente', 'estado')
         }),
         ('Horarios', {
             'fields': ('inicio', 'fin')
         }),
         ('Información del Sistema', {
-            'fields': ('creada_en',),
+            'fields': ('creado_en',),
             'classes': ('collapse',)
         }),
     )

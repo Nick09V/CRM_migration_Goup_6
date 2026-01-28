@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Cartera de Clientes | CRM Migration{% endblock %}
+
+{% block content %}
+{% include "partials/navbar.html" %}
+
+<div class="flex h-[calc(100vh-65px)] overflow-hidden">
+    {% include "partials/sidebar.html" %}
+
+    <main class="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-background-dark/50">
+        <div class="max-w-7xl mx-auto space-y-6">
+
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Sección Clientes</h1>
+                    <p class="text-sm text-slate-500">Gestione los expedientes y asigne requisitos a sus casos activos.</p>
+                </div>
+                
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                    <input type="text" 
+                           placeholder="Buscar por nombre o cédula..." 
+                           class="pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm w-full md:w-64 focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs uppercase text-slate-500 font-bold tracking-wider">
+                                <th class="p-4">Solicitante</th>
+                                <th class="p-4">Trámite / Visa</th>
+                                <th class="p-4">Estado Actual</th>
+                                <th class="p-4">Progreso</th>
+                                <th class="p-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            {% for cita in citas %}
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20">
+                                            {{ cita.solicitante.nombre|slice:":2"|upper }}
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-slate-900 dark:text-white text-sm">{{ cita.solicitante.nombre }}</p>
+                                            <p class="text-xs text-slate-500">ID: {{ cita.solicitante.cedula|default:"Pendiente" }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td class="p-4">
+                                    {% if cita.solicitante.tipo_visa %}
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                                            <span class="material-symbols-outlined text-[14px]">badge</span>
+                                            {{ cita.solicitante.tipo_visa|title }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-xs text-slate-400 italic flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[14px]">help</span>
+                                            Sin definir
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="p-4">
+                                    <div class="flex items-center gap-2">
+                                        {% if cita.estado == 'pendiente' %}
+                                            <span class="size-2 rounded-full bg-amber-400 animate-pulse"></span>
+                                            <span class="text-sm font-medium text-slate-600 dark:text-slate-300">En Proceso</span>
+                                        {% elif cita.estado == 'exitosa' %}
+                                            <span class="size-2 rounded-full bg-emerald-500"></span>
+                                            <span class="text-sm font-medium text-slate-600 dark:text-slate-300">Expediente Abierto</span>
+                                        {% else %}
+                                            <span class="size-2 rounded-full bg-slate-300"></span>
+                                            <span class="text-sm font-medium text-slate-500">{{ cita.get_estado_display }}</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+
+                                <td class="p-4 w-48">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-[10px] font-bold text-slate-500">Documentación</span>
+                                        <span class="text-[10px] font-bold text-primary">
+                                            {{ cita.solicitante.obtener_progreso }}%
+                                        </span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                                        <div class="bg-primary h-1.5 rounded-full transition-all duration-500"
+                                             style="width: {{ cita.solicitante.obtener_progreso }}%">
+                                        </div> 
+                                    </div>
+                                </td>
+
+                                <td class="p-4 text-right">
+                                    <a href="{% url 'cita_detalle' cita.id %}" 
+                                       class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-primary hover:bg-primary hover:text-white text-slate-600 text-xs font-bold rounded-lg transition-all shadow-sm group-hover:shadow-md">
+                                        <span class="material-symbols-outlined text-sm">assignment_add</span>
+                                        Asignar Requisitos
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="p-12 text-center text-slate-400">
+                                    <span class="material-symbols-outlined text-4xl mb-2 opacity-50">group_off</span>
+                                    <p class="font-bold">No hay clientes asignados.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                    <span class="text-xs text-slate-500">Mostrando {{ citas|length }} casos activos</span>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-bold text-slate-500 disabled:opacity-50" disabled>Anterior</button>
+                        <button class="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-bold text-slate-500 disabled:opacity-50" disabled>Siguiente</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+{% endblock %}

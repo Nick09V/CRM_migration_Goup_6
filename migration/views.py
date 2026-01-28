@@ -10,9 +10,10 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.template import context
 from django.urls import reverse
 from django.utils.html import escape
-from .models import Cita, Solicitante, Agente, Requisito, REQUISITOS_POR_VISA, TIPO_VISA_ESTUDIANTIL
+from .models import Cita, Solicitante, Agente, Requisito, Documento, Carpeta, TipoVisa, RequisitoVisa, TipoRequisito
 from datetime import timedelta
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 # Configuración de logging para auditoría
 logger = logging.getLogger(__name__)
@@ -86,18 +87,16 @@ def dashboard_router(request: HttpRequest) -> HttpResponse:
     if hasattr(request.user, "agente"):
         agente = request.user.agente
 
-        # A. Lógica para el calendario (Agenda Operativa)
+        # A. Agenda Operativa (Calendario)
         hoy = timezone.now().date()
-        inicio_calendario = hoy - timedelta(days=14)  # 2 semanas atrás
-        fin_calendario = hoy + timedelta(days=14)     # 2 semanas adelante
+        inicio_calendario = hoy - timedelta(days=14)
+        fin_calendario = hoy + timedelta(days=14)
 
-        # Buscamos citas en el rango
         citas_rango = Cita.objects.filter(
             agente=agente, 
             inicio__date__range=[inicio_calendario, fin_calendario]
         ).order_by("inicio")
 
-        # Mapeamos fechas a estados
         citas_map = {}
         for c in citas_rango:
             fecha = c.inicio.date()
@@ -105,7 +104,6 @@ def dashboard_router(request: HttpRequest) -> HttpResponse:
                 citas_map[fecha] = []
             citas_map[fecha].append(c.estado)
 
-        # lista de días para el template
         dias_calendario = []
         for i in range(29):
             fecha_iter = inicio_calendario + timedelta(days=i)
@@ -115,20 +113,30 @@ def dashboard_router(request: HttpRequest) -> HttpResponse:
                 "estados": citas_map.get(fecha_iter, []),
             })
 
-        # B. Consultas de Carga de Trabajo
+        # --- CONTADORES Y LISTAS ---
+        
+        # 1. Total Pendientes (Número rojo arriba a la derecha)
         docs_pendientes = Requisito.objects.filter(documentos__estado='pendiente').distinct().count()
         
-        # Citas próximas para "Casos Activos"
+        # 2. Citas Próximas (Tarjetas Blancas)
         proximas_citas = (
             Cita.objects.filter(agente=agente, estado=Cita.ESTADO_PENDIENTE)
             .select_related("solicitante")
             .order_by("inicio")[:3]
         )
 
+        # 3. [NUEVO] Clientes con Revisión Pendiente (Tarjetas Amarillas)
+        # Esto es lo que te faltaba para que Juan Pérez aparezca en "Casos Activos"
+        clientes_revision = Solicitante.objects.filter(
+            requisitos__documentos__estado='pendiente', # Tiene docs pendientes
+            citas__agente=agente # Es cliente de este agente
+        ).distinct()[:3]
+
         context = {
             "agente": agente,
-            "total_pendientes": docs_pendientes, 
+            "total_pendientes": docs_pendientes,
             "proximas_citas": proximas_citas,
+            "clientes_revision": clientes_revision, # <--- ¡IMPORTANTE!
             "dias_calendario": dias_calendario,
             "mes_actual": hoy, 
         }
@@ -141,20 +149,16 @@ def dashboard_router(request: HttpRequest) -> HttpResponse:
         return redirect("/admin/")
 
     # ---------------------------------------------------------
-    # 3. ROL CLIENTE (Solicitante)
+    # 3. ROL CLIENTE
     # ---------------------------------------------------------
-	#la lógica para cargar los datos del cliente
     if hasattr(request.user, 'solicitante'):
         solicitante = request.user.solicitante
-        
-        # Buscamos su carpeta y requisitos
         carpeta = getattr(solicitante, 'carpeta', None)
         requisitos = []
         pendientes_count = 0
         
         if carpeta:
             requisitos = solicitante.requisitos.all()
-            # Para el cliente, "pendiente" es lo que le FALTA subir (estado='faltante')
             pendientes_count = requisitos.filter(estado='faltante').count()
 
         context = {
@@ -166,7 +170,6 @@ def dashboard_router(request: HttpRequest) -> HttpResponse:
         }
         return render(request, "migration/dashboard.html", context)
 
-    # Si el usuario no tiene rol definido (borde case)
     return redirect("login")
 
 
@@ -187,52 +190,43 @@ def cita_detalle(request: HttpRequest, cita_id: int) -> HttpResponse:
 
     return render(request, "migration/cita_detail.html", context)
 
-# --- Pega esto al final de migration/views.py ---
 
-@login_required(login_url="login")
-def actualizar_tramite(request: HttpRequest, cita_id: int) -> HttpResponse:
-    """Actualiza el tipo de visa del Solicitante y genera sus requisitos automáticamente."""
-    
+@login_required
+def actualizar_tramite(request, cita_id):
     if request.method == "POST":
         cita = get_object_or_404(Cita, id=cita_id)
+        tipo_codigo = request.POST.get('tipo_tramite') # ej: 'estudiantil'
         
-        # 1. Verificar que la cita sea del agente
-        if hasattr(request.user, 'agente') and cita.agente != request.user.agente:
-            return HttpResponse("No autorizado", status=403)
-            
-        # 2. Obtener el valor del select
-        nuevo_tipo_visa = request.POST.get('tipo_tramite')
+        # 1. Actualizar el Solicitante
+        cita.solicitante.tipo_visa = tipo_codigo
+        cita.solicitante.save()
         
-        # 3. Actualizar al Solicitante
-        solicitante = cita.solicitante
-        solicitante.tipo_visa = nuevo_tipo_visa
-        solicitante.save()
+        # 2. Limpiar requisitos viejos 
+        # Requisito.objects.filter(solicitante=cita.solicitante).delete() 
 
-        # 4. Generar requisitos automáticos basados en el diccionario
-        Requisito.objects.filter(solicitante=solicitante).delete()
-
-        # Se busca la lista de requisitos para la visa seleccionada 
-        lista_requisitos = REQUISITOS_POR_VISA.get(nuevo_tipo_visa, [])
-
-        # Se crean los requisitos en la BD 
-        for nombre_req in lista_requisitos:
-            Requisito.objects.create(
-                solicitante=solicitante,
-                nombre=nombre_req,
-                estado='faltante'
+        # 3. Buscamos en la tabla pivote 'RequisitoVisa'
+        requisitos_config = RequisitoVisa.objects.filter(
+            tipo_visa__codigo=tipo_codigo,
+            tipo_visa__activo=True
+        ).select_related('tipo_requisito')
+        
+        count = 0
+        for config in requisitos_config:
+            # Se crea el requisito real para el cliente
+            # Se usa get_or_create para no duplicar si ya existe
+            Requisito.objects.get_or_create(
+                solicitante=cita.solicitante,
+                nombre=config.tipo_requisito.nombre, # Usamos el nombre del catálogo
+                defaults={'estado': 'faltante'}
             )
-        
-        # 5. Feedback visual y carga de requisitos 
+            count += 1
+            
         return HttpResponse(f"""
-            <span class="text-emerald-600 font-bold flex items-center gap-1 animate-pulse">
-                <span class="material-symbols-outlined text-sm">check_circle</span>
-                Requisitos Generados
+            <span class="text-xs font-bold text-emerald-600 animate-pulse">
+                ¡Actualizado! {count} requisitos generados.
             </span>
-            
-            <script>window.location.reload()</script>
+            <script>setTimeout(() => location.reload(), 1000)</script>
         """)
-            
-    return HttpResponse(status=400)
 
 
 # Catálogo para darle estilo a las opciones del buscador 
@@ -272,95 +266,95 @@ def _generar_html_sugerencia(nombre_req):
 
 @login_required
 def buscar_documentos(request, cita_id):
-    query = request.GET.get('q', '').lower()
+    """
+    Busca documentos en el catálogo maestro (TipoRequisito).
+    """
+    query = request.GET.get('q', '').strip()
     cita = get_object_or_404(Cita, id=cita_id)
-    solicitante = cita.solicitante
     
-    # Obtener documentos existentes
-    existentes = list(Requisito.objects.filter(solicitante=solicitante).values_list('nombre', flat=True))
-    
-    # Armar lista maestra
-    todos_posibles = set()
-    for lista in REQUISITOS_POR_VISA.values():
-        todos_posibles.update(lista)
-    todos_posibles.update(CATALOGO_METADATA.keys())
-    
-    resultados_html = ""
-    for item in todos_posibles:
-        # Filtrar si coincide la búsqueda Y si NO lo tiene ya
-        if query in item.lower() and item not in existentes:
-            meta = CATALOGO_METADATA.get(item, {"vigencia": "Consultar", "icon": "description"})
-            
-            # Se genera el HTML aquí mismo para inyectar bien la URL
-            resultados_html += f"""
-            <div class="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-blue-50/50 dark:hover:bg-primary/5 transition-all group text-left cursor-pointer mb-2">
-                <div class="flex items-center gap-3">
-                    <div class="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-slate-500 group-hover:text-primary transition-colors">
-                        <span class="material-symbols-outlined">{meta['icon']}</span>
-                    </div>
-                    <div>
-                        <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">{item}</p>
-                        <p class="text-[10px] text-slate-400 uppercase font-bold">Vigencia: {meta['vigencia']}</p>
-                    </div>
-                </div>
-                <button 
-                    hx-post="/cita/agregar-req/{cita_id}/" 
-                    hx-vals='{{"nombre": "{item}"}}'
-                    hx-target="#lista-requisitos-derecha"
-                    class="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-md text-slate-400 group-hover:bg-primary group-hover:text-white transition-all">
-                    <span class="material-symbols-outlined text-sm block">add</span>
-                </button>
-            </div>
-            """
-            
-    if not resultados_html:
-        resultados_html = '<p class="text-xs text-slate-400 p-2 italic text-center">No hay sugerencias disponibles.</p>'
-        
-    return HttpResponse(resultados_html)
+    # Si no escribe nada, no devolvemos nada (o podrías devolver sugerencias)
+    if not query:
+        return HttpResponse("")
 
+    # 1. Obtenemos lo que el usuario YA tiene asignado para no repetirlo
+    asignados = list(Requisito.objects.filter(solicitante=cita.solicitante).values_list('nombre', flat=True))
+    
+    # 2. Buscamos en el Catálogo (TipoRequisito)
+    # Filtramos por nombre y excluimos los que ya tiene
+    resultados = TipoRequisito.objects.filter(
+        nombre__icontains=query, 
+        activo=True
+    ).exclude(nombre__in=asignados)[:5] # Máximo 5 resultados
+    
+    # 3. Construimos el HTML de respuesta
+    html = ""
+    for item in resultados:
+        html += f"""
+        <div class="flex items-center justify-between p-3 border-b border-slate-100 hover:bg-slate-50 transition-colors animate-fade-in-up">
+            <div>
+                <p class="text-sm font-bold text-slate-700">{item.nombre}</p>
+                <p class="text-[10px] text-slate-400">{item.descripcion or 'Documento estándar'}</p>
+            </div>
+            <button 
+                hx-post="/cita/agregar-req/{cita.id}/"
+                hx-vals='{{"nombre": "{item.nombre}"}}'
+                hx-target="#lista-requisitos"
+                class="size-8 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white flex items-center justify-center transition-all shadow-sm">
+                <span class="material-symbols-outlined text-lg">add</span>
+            </button>
+        </div>
+        """
+    
+    if not html:
+        html = f"""
+        <div class="p-4 text-center text-slate-400 italic text-xs">
+            No se encontraron documentos con "{query}".
+        </div>
+        """
+        
+    return HttpResponse(html)
 
 @login_required
 def agregar_requisito_manual(request, cita_id):
-    """Agrega el requisito y actualiza ambas listas (Izquierda y Derecha)."""
     if request.method == "POST":
         cita = get_object_or_404(Cita, id=cita_id)
-        nombre = request.POST.get('nombre')
+        nombre_req = request.POST.get('nombre')
         
-        # 1. Crear el requisito
-        Requisito.objects.get_or_create(
-            solicitante=cita.solicitante,
-            nombre=nombre,
-            defaults={'estado': 'faltante'}
-        )
-        
-        # 2. Generar respuesta OOB (Out of Band): Actualiza DOS lugares a la vez
-        
-        # A. Se genera la lista derecha actualizada
-        requisitos = cita.solicitante.requisitos.all()
-        html_derecha = ""
-        if requisitos:
-            html_derecha = '<ul class="divide-y divide-slate-100 dark:divide-slate-800">'
-            for req in requisitos:
-                html_derecha += f"""
-                <li class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-slate-100 dark:bg-slate-700 text-slate-500 p-2 rounded-lg">
-                            <span class="material-symbols-outlined text-sm">description</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">{req.nombre.title()}</p>
-                            <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-600">Pendiente</span>
-                        </div>
-                    </div>
-                </li>
-                """
-            html_derecha += '</ul>'
+        if nombre_req:
+            # 1. Crear el requisito (Evita duplicados con get_or_create)
+            Requisito.objects.get_or_create(
+                solicitante=cita.solicitante,
+                nombre=nombre_req,
+                defaults={'estado': 'faltante', 'carga_habilitada': True}
+            )
             
-        # B. Se retorna el HTML normal (para la derecha) + Un script para limpiar el buscador
-        return HttpResponse(f"""
-            {html_derecha}
-            <script>htmx.trigger('#buscador-input', 'keyup')</script>
-        """)
+            # 2. Obtener la lista actualizada
+            requisitos = cita.solicitante.requisitos.all().order_by('id')
+            
+            # 3. Generar el HTML exacto de la lista derecha
+            html_response = ""
+            for req in requisitos:
+                # Lógica de colores según estado
+                if req.estado == 'faltante':
+                    badge = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-rose-100 text-rose-600 uppercase">Faltante</span>'
+                elif req.estado == 'pendiente':
+                    badge = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 text-amber-600 uppercase">Revisión</span>'
+                else:
+                    badge = '<span class="text-[10px] font-bold px-2 py-1 rounded bg-emerald-100 text-emerald-600 uppercase">OK</span>'
+
+                html_response += f"""
+                <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg mb-2 shadow-sm animate-fade-in">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-slate-100 text-slate-500 rounded-lg">
+                            <span class="material-symbols-outlined text-lg">description</span>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700">{req.nombre}</span>
+                    </div>
+                    {badge}
+                </div>
+                """
+            
+            return HttpResponse(html_response)
 
     return HttpResponse(status=400)
 
@@ -423,31 +417,23 @@ from .models import Carpeta # Asegúrate de importar Carpeta arriba
 
 @login_required
 def enviar_solicitud(request, cita_id):
-    """Finaliza la configuración, notifica al cliente y CIERRA la cita."""
     if request.method == "POST":
         cita = get_object_or_404(Cita, id=cita_id)
-        solicitante = cita.solicitante
-
-        # 1. Crear/Habilitar Carpeta
-        carpeta, created = Carpeta.objects.get_or_create(
-            solicitante=solicitante,
-            defaults={'estado': 'pendiente'}
-        )
-        if not created and carpeta.estado == 'cerrada_aceptada':
-             carpeta.estado = 'pendiente'
-             carpeta.save()
-
-        # Marcar la cita como REALIZADA
-        cita.estado = Cita.ESTADO_REALIZADA
-        cita.save()
-
-        # 3. Mensaje de éxito
-        messages.success(request, f"✅ Solicitud enviada y cita marcada como completada.")
         
-        return redirect('dashboard')
-    
-    return HttpResponse(status=400)
+        # 1. Habilitamos la carga para el cliente
+        for req in cita.solicitante.requisitos.all():
+            if req.estado == 'faltante':
+                req.carga_habilitada = True
+                req.save()
+        
+       
+        cita.estado = Cita.ESTADO_EXITOSA 
+        cita.save()
+        
+        # Redirigimos al dashboard con mensaje de éxito
+        return redirect('dashboard') 
 
+    return redirect('dashboard')
 
 @login_required
 def revision_documentos(request, solicitante_id):
@@ -514,3 +500,85 @@ def lista_documentos_pendientes(request):
         "clientes": clientes_con_pendientes
     }
     return render(request, "migration/lista_pendientes.html", context)
+
+@login_required
+@require_POST
+def aprobar_documento(request, requisito_id):
+    requisito = get_object_or_404(Requisito, id=requisito_id)
+    documento = requisito.obtener_documento_actual()
+    
+    if documento:
+        # Usar texto directo 'revisado'
+        documento.estado = 'revisado' 
+        documento.save()
+        requisito.estado = 'revisado'
+        requisito.observaciones = "" 
+        requisito.save()
+    
+    return render(request, "partials/card_documento.html", {"req": requisito})
+
+
+@login_required
+@require_POST
+def rechazar_documento_modal(request):
+    requisito_id = request.POST.get('requisito_id')
+    motivo = request.POST.get('motivo')
+    
+    requisito = get_object_or_404(Requisito, id=requisito_id)
+    
+    # 1. Actualizar Documento
+    documento = requisito.obtener_documento_actual()
+    if documento:
+        documento.estado = 'faltante'
+        documento.save()
+    
+    # 2. Actualizar Requisito (Esto activa el color ROJO)
+    requisito.estado = 'faltante'
+    requisito.observaciones = motivo 
+    requisito.habilitar_carga()
+    requisito.save()
+
+    # 3. CLAVE: Enviamos 'oob_swap=True' para que HTMX sepa reemplazar la tarjeta
+    context = {"req": requisito, "oob_swap": True}
+    return render(request, "partials/card_documento.html", context)
+
+@login_required
+def historial_versiones(request, requisito_id):
+    """Obtiene todas las versiones de un requisito y renderiza el Drawer lateral."""
+    requisito = get_object_or_404(Requisito, id=requisito_id)
+    
+    # Obtenemos todos los documentos ordenados por versión descendente (v3, v2, v1...)
+    documentos = requisito.documentos.all().order_by('-version')
+    
+    context = {
+        "req": requisito,
+        "documentos": documentos
+    }
+    return render(request, "partials/drawer_historial.html", context)
+
+@login_required
+def lista_clientes(request):
+    """
+    Tabla maestra de clientes. 
+    Muestra los casos para poder entrar a 'Asignar Requisitos'.
+    """
+    if hasattr(request.user, "agente"):
+        # Traemos todas las citas de este agente, ordenadas por fecha
+        # Usamos select_related para que sea rápido obtener datos del solicitante
+        citas = Cita.objects.filter(agente=request.user.agente).select_related('solicitante').order_by('-inicio')
+    else:
+        citas = Cita.objects.all().select_related('solicitante').order_by('-inicio')
+        
+    return render(request, "migration/lista_clientes.html", {"citas": citas})
+
+@login_required
+def mis_citas(request):
+    """Muestra todas las citas del agente."""
+    if hasattr(request.user, "agente"):
+        # Filtra las citas solo de este agente
+        citas = Cita.objects.filter(agente=request.user.agente).order_by('inicio')
+    else:
+        # Si es admin, ve todas
+        citas = Cita.objects.all().order_by('inicio')
+        
+    return render(request, "migration/mis_citas.html", {"citas": citas})
