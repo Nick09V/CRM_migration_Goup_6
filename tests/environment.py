@@ -73,7 +73,7 @@ def before_scenario(context, scenario):
     TipoRequisito.objects.all().delete()
     TipoVisa.objects.all().delete()
 
-    print(f"[environment.py] Base de datos limpia - el test creará los datos que necesite\n")
+    print("[environment.py] Base de datos limpia - el test creará los datos que necesite\n")
 
 
 def after_scenario(context, scenario):
