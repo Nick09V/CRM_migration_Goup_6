@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Steps para la característica de repositorio de documentos autoorganizado.
-Implementa los pasos BDD para los escenarios de carga de documentos.
-"""
 from behave import given, when, then
 from django.core.exceptions import ValidationError as DjValidationError
 
@@ -11,6 +6,7 @@ from migration.models import (
     Requisito,
     Documento,
     Carpeta,
+    TipoVisa,
     ESTADO_DOCUMENTO_FALTANTE,
 )
 from migration.services.documentos import (
@@ -23,7 +19,6 @@ from migration.services.documentos import (
     obtener_o_crear_requisito,
 )
 from faker import Faker
-
 
 faker = Faker("es_ES")
 
@@ -68,6 +63,23 @@ def limpiar_solicitante(context) -> None:
         Carpeta.objects.filter(solicitante=context.solicitante).delete()
 
 
+def crear_tipos_visa_para_tests():
+    """
+    Crea los tipos de visa que se usan en los antecedentes.
+    Esta función se llama una vez por feature.
+    """
+    tipos_visa = ['estudiantil', 'trabajo', 'residencial', 'turista']
+
+    for codigo in tipos_visa:
+        TipoVisa.objects.get_or_create(
+            codigo=codigo,
+            defaults={
+                'nombre': codigo.title(),
+                'activo': True
+            }
+        )
+
+
 # ==================== Hooks de limpieza ====================
 
 
@@ -93,13 +105,23 @@ def paso_estados_permitidos(context):
 
 @given("los tipos de visa soportados son: estudiantil, trabajo, residencial, turista")
 def paso_tipos_visa_soportados(context):
-    """Verifica que los tipos de visa soportados estén configurados."""
+    """
+    Crea y verifica que los tipos de visa soportados estén disponibles.
+
+    CAMBIO CLAVE: Ahora creamos los tipos de visa directamente aquí,
+    no dependemos de constantes o funciones de población.
+    """
+    # Crear los tipos de visa que el test necesita
+    crear_tipos_visa_para_tests()
+
+    # Obtener los tipos creados
     tipos = obtener_tipos_visa_soportados()
 
-    assert "estudiantil" in tipos, "Debe existir el tipo 'estudiantil'"
-    assert "trabajo" in tipos, "Debe existir el tipo 'trabajo'"
-    assert "residencial" in tipos, "Debe existir el tipo 'residencial'"
-    assert "turista" in tipos, "Debe existir el tipo 'turista'"
+    # Verificar que se crearon correctamente
+    assert "estudiantil" in tipos, f"Debe existir el tipo 'estudiantil'. Tipos disponibles: {tipos}"
+    assert "trabajo" in tipos, f"Debe existir el tipo 'trabajo'. Tipos disponibles: {tipos}"
+    assert "residencial" in tipos, f"Debe existir el tipo 'residencial'. Tipos disponibles: {tipos}"
+    assert "turista" in tipos, f"Debe existir el tipo 'turista'. Tipos disponibles: {tipos}"
 
     context.tipos_visa = tipos
 
@@ -109,7 +131,17 @@ def paso_tipos_visa_soportados(context):
 
 @given('que un solicitante de visa de "{tipo_visa}" no ha subido su "{nombre_requisito}"')
 def paso_solicitante_sin_documento(context, tipo_visa: str, nombre_requisito: str):
-    """Prepara un solicitante que no ha subido el documento especificado."""
+    """
+    Prepara un solicitante que no ha subido el documento especificado.
+
+    CAMBIO CLAVE: Aseguramos que el tipo de visa existe antes de crear el solicitante.
+    """
+    # Asegurar que el tipo de visa existe
+    TipoVisa.objects.get_or_create(
+        codigo=tipo_visa,
+        defaults={'nombre': tipo_visa.title(), 'activo': True}
+    )
+
     context.solicitante = crear_solicitante_con_visa(tipo_visa)
     context.nombre_requisito = nombre_requisito
     context.tipo_visa = tipo_visa
@@ -184,13 +216,22 @@ def paso_verificar_estado_documento(context, estado_esperado: str):
     )
 
 
-
 # ==================== Escenario 2: Carga de documento rechazado ====================
 
 
 @given("que la versión del documento es: {version_previa:d}")
 def paso_crear_documento_con_version(context, version_previa: int):
-    """Crea un documento con la versión especificada."""
+    """
+    Crea un documento con la versión especificada.
+
+    CAMBIO CLAVE: Aseguramos que el tipo de visa existe.
+    """
+    # Asegurar que el tipo de visa existe
+    TipoVisa.objects.get_or_create(
+        codigo='trabajo',
+        defaults={'nombre': 'Trabajo', 'activo': True}
+    )
+
     # Crear solicitante si no existe
     if not hasattr(context, "solicitante") or context.solicitante is None:
         context.solicitante = crear_solicitante_con_visa("trabajo")
@@ -323,4 +364,3 @@ def paso_aprobar_documento_anterior(context):
 def paso_verificar_rechazo_subida(context):
     """Verifica que el sistema rechazó la subida."""
     assert context.error is not None, "Debería haber un error de validación"
-

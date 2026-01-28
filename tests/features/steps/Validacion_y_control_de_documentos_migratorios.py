@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Steps para la característica de Validación de documentos (Revisión de requisitos).
+Steps para la característica de Validación y control de documentos migratorios.
 Implementa los pasos BDD para los escenarios de aprobación y rechazo de documentos.
 """
 from behave import given, when, then
@@ -11,16 +11,11 @@ from migration.models import (
     Agente,
     Documento,
     ESTADO_DOCUMENTO_PENDIENTE,
-    ESTADO_DOCUMENTO_REVISADO,
     ESTADO_DOCUMENTO_FALTANTE,
-    ESTADO_CARPETA_APROBADO,
 )
 from migration.services.revision import (
     aprobar_documento,
     rechazar_documento,
-    es_ultimo_documento_pendiente,
-    marcar_carpeta_aprobada,
-    verificar_todos_documentos_revisados,
 )
 from migration.services.documentos import (
     obtener_o_crear_requisito,
@@ -178,89 +173,7 @@ def paso_solicitante_notificado_aprobacion(context):
     )
 
 
-# ==================== Escenario 2: Aprobación de documento final ====================
-
-
-@given("que existe un unico documento por aprobar")
-def paso_unico_documento_por_aprobar(context):
-    """Prepara un escenario donde solo hay un documento pendiente por aprobar."""
-    # Verificar que ya existe un documento en el contexto
-    assert hasattr(context, "documento"), "Debe existir un documento en el contexto"
-
-    # Verificar que es el único pendiente
-    es_unico = es_ultimo_documento_pendiente(context.documento)
-    assert es_unico, (
-        "Debe ser el único documento pendiente para este escenario"
-    )
-
-
-@when("el agente aprueba el documento")
-def paso_agente_aprueba_documento_final(context):
-    """El agente aprueba el documento final."""
-    context.error = None
-
-    try:
-        context.resultado = aprobar_documento(context.documento)
-
-        # Si todos los documentos están revisados, marcar carpeta como aprobada
-        if verificar_todos_documentos_revisados(context.documento):
-            context.carpeta = marcar_carpeta_aprobada(context.documento)
-
-    except DjValidationError as e:
-        context.error = e
-        context.resultado = None
-
-
-@then("el documento queda marcado como revisado sin observaciones")
-def paso_documento_revisado_sin_observaciones(context):
-    """Verifica que el documento quedó marcado como revisado sin observaciones."""
-    assert context.error is None, f"No debería haber error: {context.error}"
-    assert context.resultado is not None, "Debe existir un resultado"
-    assert context.resultado.exitoso, f"La operación debe ser exitosa: {context.resultado.mensaje}"
-
-    # Refrescar documento desde BD
-    context.documento.refresh_from_db()
-
-    assert context.documento.estado == ESTADO_DOCUMENTO_REVISADO, (
-        f"El estado debe ser 'revisado', pero es '{context.documento.estado}'"
-    )
-
-    # Verificar que no hay observaciones
-    requisito = context.documento.requisito
-    requisito.refresh_from_db()
-    assert requisito.observaciones == "", (
-        f"No debe haber observaciones, pero tiene: '{requisito.observaciones}'"
-    )
-
-
-@then("se notifica al solicitante sobre la aprobación")
-def paso_notifica_solicitante_aprobacion(context):
-    """Verifica que el solicitante fue notificado de la aprobación."""
-    assert context.resultado.notificacion is not None, (
-        "Debe existir una notificación"
-    )
-    assert context.resultado.notificacion.tipo == "aprobacion", (
-        f"La notificación debe ser de tipo 'aprobacion', "
-        f"pero es '{context.resultado.notificacion.tipo}'"
-    )
-    assert context.resultado.notificacion.enviada, (
-        "La notificación debe haber sido enviada"
-    )
-
-
-@then("la carpeta queda marcado como aprobada")
-def paso_carpeta_aprobada(context):
-    """Verifica que la carpeta del solicitante queda marcada como aprobada."""
-    # Refrescar carpeta desde BD
-    context.carpeta.refresh_from_db()
-
-    assert context.carpeta.estado == ESTADO_CARPETA_APROBADO, (
-        f"El estado de la carpeta debe ser 'aprobado', "
-        f"pero es '{context.carpeta.estado}'"
-    )
-
-
-# ==================== Escenario 3: Rechazo de un documento ====================
+# ==================== Escenario 2: Rechazo de un documento ====================
 
 
 @when("el agente rechaza el documento")
@@ -332,4 +245,3 @@ def paso_habilita_carga_documento(context):
     assert requisito.observaciones == context.razones_rechazo, (
         "Las observaciones deben contener las razones del rechazo"
     )
-
