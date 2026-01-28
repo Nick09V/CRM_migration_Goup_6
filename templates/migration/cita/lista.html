@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Citas - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-calendar-event me-2"></i>Todas las Citas</h1>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Filtrar por estado:</label>
+                <select name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="exitosa" {% if estado_filtro == 'exitosa' %}selected{% endif %}>Exitosa</option>
+                    <option value="cancelada" {% if estado_filtro == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                    <option value="realizada" {% if estado_filtro == 'realizada' %}selected{% endif %}>Realizada</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary w-100">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Citas -->
+<div class="card">
+    <div class="card-body">
+        {% if citas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Solicitante</th>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Agente</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cita in citas %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'migration:solicitante_detalle' pk=cita.solicitante.pk %}" class="text-decoration-none">
+                                    {{ cita.solicitante.nombre }}
+                                </a>
+                            </td>
+                            <td>{{ cita.inicio|date:"d/m/Y" }}</td>
+                            <td>{{ cita.inicio|time:"H:i" }} - {{ cita.fin|time:"H:i" }}</td>
+                            <td>{{ cita.agente.nombre }}</td>
+                            <td>
+                                <span class="badge {% if cita.estado == 'pendiente' %}bg-warning text-dark{% elif cita.estado == 'exitosa' %}bg-success{% elif cita.estado == 'cancelada' %}bg-secondary{% else %}bg-info{% endif %}">
+                                    {{ cita.get_estado_display }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                {% if cita.estado == 'pendiente' %}
+                                <a href="{% url 'migration:atender_cita' cita_pk=cita.pk %}" class="btn btn-sm btn-primary btn-action" title="Atender cita">
+                                    <i class="bi bi-check2-square"></i>
+                                </a>
+                                <a href="{% url 'migration:reprogramar_cita' cita_pk=cita.pk %}" class="btn btn-sm btn-outline-warning btn-action" title="Reprogramar">
+                                    <i class="bi bi-calendar2-range"></i>
+                                </a>
+                                <a href="{% url 'migration:cancelar_cita' cita_pk=cita.pk %}" class="btn btn-sm btn-outline-danger btn-action" title="Cancelar">
+                                    <i class="bi bi-x-circle"></i>
+                                </a>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">Anterior</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">Siguiente</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-calendar-x" style="font-size: 4rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">No se encontraron citas.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Solicitantes - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-people me-2"></i>Solicitantes</h1>
+    <a href="{% url 'migration:solicitante_crear' %}" class="btn btn-primary">
+        <i class="bi bi-person-plus me-1"></i> Nuevo Solicitante
+    </a>
+</div>
+
+<!-- Búsqueda -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                {{ form_busqueda.busqueda }}
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary w-100">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Solicitantes -->
+<div class="card">
+    <div class="card-body">
+        {% if solicitantes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Cédula</th>
+                            <th>Tipo de Visa</th>
+                            <th>Email</th>
+                            <th>Teléfono</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for solicitante in solicitantes %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'migration:solicitante_detalle' pk=solicitante.pk %}" class="text-decoration-none fw-bold">
+                                    {{ solicitante.nombre }}
+                                </a>
+                            </td>
+                            <td>{{ solicitante.cedula|default:"-" }}</td>
+                            <td>
+                                {% if solicitante.tipo_visa %}
+                                    <span class="badge bg-info">{{ solicitante.get_tipo_visa_display }}</span>
+                                {% else %}
+                                    <span class="text-muted">Sin asignar</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ solicitante.email|default:"-" }}</td>
+                            <td>{{ solicitante.telefono|default:"-" }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'migration:solicitante_detalle' pk=solicitante.pk %}" class="btn btn-sm btn-outline-primary btn-action" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'migration:solicitante_editar' pk=solicitante.pk %}" class="btn btn-sm btn-outline-secondary btn-action" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.busqueda %}&busqueda={{ request.GET.busqueda }}{% endif %}">Anterior</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.busqueda %}&busqueda={{ request.GET.busqueda }}{% endif %}">Siguiente</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">No se encontraron solicitantes.</p>
+                <a href="{% url 'migration:solicitante_crear' %}" class="btn btn-primary">
+                    <i class="bi bi-person-plus me-1"></i> Registrar primer solicitante
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

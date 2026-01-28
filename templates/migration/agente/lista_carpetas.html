@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Carpetas - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-folder me-2"></i>Gestión de Carpetas</h1>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Filtrar por estado:</label>
+                <select name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="aprobado" {% if estado_filtro == 'aprobado' %}selected{% endif %}>Aprobado</option>
+                    <option value="rechazado" {% if estado_filtro == 'rechazado' %}selected{% endif %}>Rechazado</option>
+                    <option value="cerrada_aceptada" {% if estado_filtro == 'cerrada_aceptada' %}selected{% endif %}>Cerrada Aceptada</option>
+                    <option value="cerrada_rechazada" {% if estado_filtro == 'cerrada_rechazada' %}selected{% endif %}>Cerrada Rechazada</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary w-100">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Carpetas -->
+<div class="card">
+    <div class="card-body">
+        {% if carpetas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Solicitante</th>
+                            <th>Cédula</th>
+                            <th>Tipo de Visa</th>
+                            <th>Estado</th>
+                            <th>Creada</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for carpeta in carpetas %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'migration:solicitante_detalle' pk=carpeta.solicitante.pk %}" class="text-decoration-none fw-bold">
+                                    {{ carpeta.solicitante.nombre }}
+                                </a>
+                            </td>
+                            <td>{{ carpeta.solicitante.cedula|default:"-" }}</td>
+                            <td>
+                                {% if carpeta.solicitante.tipo_visa %}
+                                    <span class="badge bg-info">{{ carpeta.solicitante.get_tipo_visa_display }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge status-badge status-{{ carpeta.estado }}">
+                                    {{ carpeta.get_estado_display }}
+                                </span>
+                            </td>
+                            <td>{{ carpeta.creado_en|date:"d/m/Y" }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'migration:solicitante_detalle' pk=carpeta.solicitante.pk %}"
+                                   class="btn btn-sm btn-outline-primary btn-action" title="Ver solicitante">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if carpeta.estado == 'aprobado' %}
+                                <a href="{% url 'migration:registrar_resultado' carpeta_pk=carpeta.pk %}"
+                                   class="btn btn-sm btn-success btn-action" title="Registrar resultado">
+                                    <i class="bi bi-check2-square"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if carpeta.observaciones %}
+                        <tr class="table-warning">
+                            <td colspan="6" class="small">
+                                <i class="bi bi-chat-left-text me-2"></i>
+                                <strong>Observaciones:</strong> {{ carpeta.observaciones }}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if is_paginated %}
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">Anterior</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">Siguiente</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-folder-x" style="font-size: 4rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">No se encontraron carpetas.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

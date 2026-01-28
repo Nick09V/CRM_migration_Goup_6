@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block title %}Agendar Cita - CRM Migración{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-container {
+        position: relative;
+    }
+    .calendar-container input[type="date"] {
+        padding-right: 2.5rem;
+    }
+    .calendar-icon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #6c757d;
+    }
+    .date-info {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+    }
+    .time-slot {
+        transition: all 0.2s;
+    }
+    .time-slot:hover {
+        background-color: #e9ecef;
+    }
+    .time-slot.selected {
+        background-color: #0d6efd;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-calendar-plus me-2"></i>Agendar Cita</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-circle me-2"></i>Cita para: <strong>{{ solicitante.nombre }}</strong>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <p class="mb-0">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Selector de Fecha tipo Calendario -->
+                    <div class="mb-4">
+                        <label for="id_fecha" class="form-label">
+                            <i class="bi bi-calendar-event me-1"></i>{{ form.fecha.label }}
+                        </label>
+                        <div class="calendar-container">
+                            {{ form.fecha }}
+                            <i class="bi bi-calendar3 calendar-icon"></i>
+                        </div>
+                        {% if form.fecha.errors %}
+                            <div class="text-danger small mt-1">{{ form.fecha.errors.0 }}</div>
+                        {% endif %}
+                        <div class="date-info">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                <span id="fecha-info">Seleccione una fecha en el calendario</span>
+                            </small>
+                            <div class="mt-2">
+                                <span class="badge bg-secondary me-1">
+                                    <i class="bi bi-calendar-x me-1"></i>Domingos no disponibles
+                                </span>
+                                <span class="badge bg-info">
+                                    <i class="bi bi-calendar-range me-1"></i>Máximo 2 semanas
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selector de Hora -->
+                    <div class="mb-4">
+                        <label for="id_hora" class="form-label">
+                            <i class="bi bi-clock me-1"></i>{{ form.hora.label }}
+                        </label>
+                        {{ form.hora }}
+                        {% if form.hora.errors %}
+                            <div class="text-danger small mt-1">{{ form.hora.errors.0 }}</div>
+                        {% endif %}
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-clock-history me-1"></i>Horario de atención: 08:00 - 12:00
+                        </small>
+                    </div>
+
+                    <!-- Resumen de la Cita -->
+                    <div class="alert alert-primary" id="resumen-cita" style="display: none;">
+                        <h6 class="alert-heading mb-2">
+                            <i class="bi bi-calendar-check me-2"></i>Resumen de la Cita
+                        </h6>
+                        <p class="mb-0">
+                            <strong>Fecha:</strong> <span id="resumen-fecha">-</span><br>
+                            <strong>Hora:</strong> <span id="resumen-hora">-</span><br>
+                            <strong>Duración:</strong> 1 hora
+                        </p>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Información importante</h6>
+                        <ul class="mb-0 small">
+                            <li>Las citas tienen una duración de 1 hora</li>
+                            <li>Se asignará automáticamente un agente disponible</li>
+                            <li>Las cancelaciones deben realizarse con al menos 3 días de anticipación</li>
+                            <li>No se pueden agendar citas en fechas y horarios anteriores a la hora actual</li>
+                        </ul>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:solicitante_detalle' pk=solicitante.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-calendar-check me-1"></i> Confirmar Cita
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-lg-6">
+        <!-- Horarios Disponibles -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-clock me-2"></i>Horarios Disponibles
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="border rounded p-2 text-center time-slot" data-hora="08:00">
+                            <strong>08:00</strong>
+                            <small class="d-block text-muted">08:00 - 09:00</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-2 text-center time-slot" data-hora="09:00">
+                            <strong>09:00</strong>
+                            <small class="d-block text-muted">09:00 - 10:00</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-2 text-center time-slot" data-hora="10:00">
+                            <strong>10:00</strong>
+                            <small class="d-block text-muted">10:00 - 11:00</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border rounded p-2 text-center time-slot" data-hora="11:00">
+                            <strong>11:00</strong>
+                            <small class="d-block text-muted">11:00 - 12:00</small>
+                        </div>
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-3">
+                    <i class="bi bi-people me-1"></i>La disponibilidad depende de los agentes activos.
+                </small>
+            </div>
+        </div>
+
+        <!-- Leyenda -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-question-circle me-2"></i>Ayuda
+            </div>
+            <div class="card-body small">
+                <p class="mb-2"><strong>¿Cómo agendar?</strong></p>
+                <ol class="mb-0 ps-3">
+                    <li>Seleccione una fecha en el calendario</li>
+                    <li>Elija un horario disponible</li>
+                    <li>Confirme la cita</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaInput = document.getElementById('id_fecha');
+    const horaSelect = document.getElementById('id_hora');
+    const fechaInfo = document.getElementById('fecha-info');
+    const resumenCita = document.getElementById('resumen-cita');
+    const resumenFecha = document.getElementById('resumen-fecha');
+    const resumenHora = document.getElementById('resumen-hora');
+    const timeSlots = document.querySelectorAll('.time-slot');
+
+    // Nombres de días en español
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+    function formatearFecha(fechaStr) {
+        if (!fechaStr) return '';
+        const fecha = new Date(fechaStr + 'T00:00:00');
+        const diaSemana = diasSemana[fecha.getDay()];
+        const dia = fecha.getDate();
+        const mes = meses[fecha.getMonth()];
+        const año = fecha.getFullYear();
+        return `${diaSemana} ${dia} de ${mes} de ${año}`;
+    }
+
+    function actualizarResumen() {
+        const fecha = fechaInput.value;
+        const hora = horaSelect.value;
+
+        if (fecha) {
+            const fechaFormateada = formatearFecha(fecha);
+            fechaInfo.textContent = fechaFormateada;
+            resumenFecha.textContent = fechaFormateada;
+
+            // Verificar si es domingo
+            const fechaObj = new Date(fecha + 'T00:00:00');
+            if (fechaObj.getDay() === 0) {
+                fechaInfo.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Los domingos no están disponibles</span>';
+            }
+        } else {
+            fechaInfo.textContent = 'Seleccione una fecha en el calendario';
+            resumenFecha.textContent = '-';
+        }
+
+        if (hora) {
+            const horaFin = parseInt(hora.split(':')[0]) + 1;
+            resumenHora.textContent = `${hora} - ${horaFin}:00`;
+        } else {
+            resumenHora.textContent = '-';
+        }
+
+        // Mostrar u ocultar resumen
+        if (fecha && hora) {
+            resumenCita.style.display = 'block';
+        } else {
+            resumenCita.style.display = 'none';
+        }
+    }
+
+    function actualizarTimeSlots() {
+        const horaSeleccionada = horaSelect.value;
+        timeSlots.forEach(function(slot) {
+            if (slot.dataset.hora === horaSeleccionada) {
+                slot.classList.add('selected');
+            } else {
+                slot.classList.remove('selected');
+            }
+        });
+    }
+
+    // Eventos
+    fechaInput.addEventListener('change', actualizarResumen);
+    horaSelect.addEventListener('change', function() {
+        actualizarResumen();
+        actualizarTimeSlots();
+    });
+
+    // Click en time slots
+    timeSlots.forEach(function(slot) {
+        slot.style.cursor = 'pointer';
+        slot.addEventListener('click', function() {
+            horaSelect.value = this.dataset.hora;
+            actualizarResumen();
+            actualizarTimeSlots();
+        });
+    });
+
+    // Estado inicial
+    actualizarResumen();
+    actualizarTimeSlots();
+});
+</script>
+{% endblock %}
+{% endblock %}

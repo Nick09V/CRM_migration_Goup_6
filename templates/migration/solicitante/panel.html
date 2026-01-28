@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Mi Panel - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-person-circle me-2"></i>Mi Panel
+    </h1>
+    <span class="badge bg-info">Solicitante</span>
+</div>
+
+<!-- Información Personal -->
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-person-lines-fill me-2"></i>Mi Información
+            </div>
+            <div class="card-body">
+                <p class="h5 mb-3">{{ solicitante.nombre }}</p>
+                <p class="mb-1"><strong>Cédula:</strong> {{ solicitante.cedula|default:"No registrada" }}</p>
+                <p class="mb-1"><strong>Email:</strong> {{ solicitante.email|default:"No registrado" }}</p>
+                <p class="mb-1"><strong>Teléfono:</strong> {{ solicitante.telefono|default:"No registrado" }}</p>
+                <p class="mb-0">
+                    <strong>Tipo de Visa:</strong>
+                    {% if solicitante.tipo_visa %}
+                        <span class="badge bg-info">{{ solicitante.get_tipo_visa_display }}</span>
+                    {% else %}
+                        <span class="text-muted">Pendiente de asignación</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado de Carpeta -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-folder me-2"></i>Estado de mi Carpeta
+            </div>
+            <div class="card-body">
+                {% if carpeta %}
+                    <div class="text-center mb-3">
+                        <span class="badge status-badge status-{{ carpeta.estado }}" style="font-size: 1.1rem; padding: 0.5rem 1rem;">
+                            {{ carpeta.get_estado_display }}
+                        </span>
+                    </div>
+
+                    {% if carpeta.observaciones %}
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        <strong>Observaciones:</strong> {{ carpeta.observaciones }}
+                    </div>
+                    {% endif %}
+
+                    <p class="mb-1"><strong>Progreso de documentos:</strong></p>
+                    <div class="progress progress-custom mb-2" style="height: 20px;">
+                        <div class="progress-bar {% if progreso_documentos == 100 %}bg-success{% else %}bg-primary{% endif %}"
+                             role="progressbar"
+                             style="width: {{ progreso_documentos }}%">
+                            {{ progreso_documentos }}%
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="bi bi-folder-x" style="font-size: 3rem; color: #ccc;"></i>
+                        <p class="text-muted mt-2">Carpeta no iniciada</p>
+                        <small class="text-muted">Se creará al asignar requisitos</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cita Actual -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-calendar-event me-2"></i>Mi Cita
+            </div>
+            <div class="card-body">
+                {% if cita_pendiente %}
+                    <div class="alert alert-success mb-3">
+                        <h6 class="alert-heading mb-2">
+                            <i class="bi bi-check-circle me-2"></i>Cita Confirmada
+                        </h6>
+                        <p class="mb-1"><strong>Fecha:</strong> {{ cita_pendiente.inicio|date:"l, d F Y" }}</p>
+                        <p class="mb-1"><strong>Hora:</strong> {{ cita_pendiente.inicio|time:"H:i" }} - {{ cita_pendiente.fin|time:"H:i" }}</p>
+                        <p class="mb-0"><strong>Agente:</strong> {{ cita_pendiente.agente.nombre }}</p>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'migration:reprogramar_cita' cita_pk=cita_pendiente.pk %}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-calendar2-range me-1"></i> Reprogramar
+                        </a>
+                        <a href="{% url 'migration:cancelar_cita' cita_pk=cita_pendiente.pk %}" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="bi bi-calendar-x" style="font-size: 3rem; color: #ccc;"></i>
+                        <p class="text-muted mt-2">Sin cita programada</p>
+                        <a href="{% url 'migration:agendar_cita' solicitante_pk=solicitante.pk %}" class="btn btn-primary">
+                            <i class="bi bi-calendar-plus me-1"></i> Agendar Cita
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Requisitos y Documentos -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-file-earmark-check me-2"></i>Mis Requisitos y Documentos
+    </div>
+    <div class="card-body">
+        {% if requisitos %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Requisito</th>
+                            <th>Estado</th>
+                            <th>Observaciones</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for requisito in requisitos %}
+                        <tr>
+                            <td>{{ requisito.nombre|title }}</td>
+                            <td>
+                                <span class="badge status-badge status-{{ requisito.estado }}">
+                                    {{ requisito.get_estado_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if requisito.observaciones %}
+                                    <small class="text-danger">
+                                        <i class="bi bi-exclamation-circle me-1"></i>{{ requisito.observaciones }}
+                                    </small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if requisito.puede_subir_nuevo_documento %}
+                                <a href="{% url 'migration:subir_documento' requisito_pk=requisito.pk %}"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="bi bi-upload me-1"></i>Subir
+                                </a>
+                                {% elif requisito.estado == 'pendiente' %}
+                                <span class="badge bg-warning text-dark">En revisión</span>
+                                {% elif requisito.estado == 'revisado' %}
+                                <span class="badge bg-success"><i class="bi bi-check"></i> Aprobado</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-file-earmark-x" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-2">Aún no tiene requisitos asignados</p>
+                <small class="text-muted">Los requisitos serán asignados durante su cita migratoria</small>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Historial de Citas -->
+{% if historial_citas %}
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-clock-history me-2"></i>Historial de Citas
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Agente</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cita in historial_citas %}
+                    <tr>
+                        <td>{{ cita.inicio|date:"d/m/Y" }}</td>
+                        <td>{{ cita.inicio|time:"H:i" }}</td>
+                        <td>{{ cita.agente.nombre }}</td>
+                        <td>
+                            <span class="badge {% if cita.estado == 'exitosa' %}bg-success{% elif cita.estado == 'cancelada' %}bg-secondary{% else %}bg-info{% endif %}">
+                                {{ cita.get_estado_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

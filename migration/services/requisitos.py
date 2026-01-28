@@ -1,6 +1,6 @@
 """
 Servicio de registro de requisitos migratorios.
-Gestiona la lógica de negocio para asignar requisitos según el tipo de visa.
+Gestiona la lógica de negocio para asignar requisitos de forma dinámica por el agente.
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -11,6 +11,7 @@ from migration.models import (
     Solicitante,
     Requisito,
     Cita,
+    CatalogoRequisito,
     REQUISITOS_POR_VISA,
     ESTADO_DOCUMENTO_FALTANTE,
 )
@@ -246,3 +247,98 @@ def verificar_requisitos_pendientes(solicitante: Solicitante) -> bool:
         return False
 
     return all(req.estado == ESTADO_DOCUMENTO_FALTANTE for req in requisitos)
+
+
+def obtener_catalogo_requisitos() -> list[CatalogoRequisito]:
+    """
+    Obtiene todos los requisitos disponibles en el catálogo.
+
+    Returns:
+        Lista de requisitos activos del catálogo.
+    """
+    return list(CatalogoRequisito.obtener_requisitos_activos())
+
+
+def asignar_requisitos_dinamico(
+    solicitante: Solicitante,
+    tipo_visa: str,
+    requisitos_seleccionados: list[int],
+    validar_fecha: bool = False
+) -> ResultadoRegistroRequisitos:
+    """
+    Asigna requisitos seleccionados por el agente a un solicitante.
+
+    Este método reemplaza la asignación automática por tipo de visa,
+    permitiendo al agente seleccionar explícitamente qué requisitos
+    aplican para cada solicitante.
+
+    Args:
+        solicitante: El solicitante al que se asignarán los requisitos.
+        tipo_visa: El tipo de visa seleccionado.
+        requisitos_seleccionados: Lista de IDs de CatalogoRequisito seleccionados.
+        validar_fecha: Si se debe validar que la cita sea hoy (default: False).
+
+    Returns:
+        ResultadoRegistroRequisitos con el estado de la operación.
+
+    Raises:
+        ValidationError: Si no se seleccionaron requisitos o hay errores de validación.
+    """
+    if not requisitos_seleccionados:
+        raise ValidationError(
+            "Debe seleccionar al menos un requisito para el solicitante."
+        )
+
+    # Registrar el tipo de visa
+    solicitante.tipo_visa = tipo_visa
+    solicitante.save()
+
+    # Obtener los requisitos del catálogo
+    catalogo_requisitos = CatalogoRequisito.objects.filter(
+        id__in=requisitos_seleccionados,
+        activo=True
+    )
+
+    if not catalogo_requisitos.exists():
+        raise ValidationError(
+            "Los requisitos seleccionados no son válidos o no están activos."
+        )
+
+    # Eliminar requisitos previos del solicitante (si se está reasignando)
+    # Solo eliminar los que no tienen documentos asociados
+    requisitos_sin_documentos = solicitante.requisitos.filter(documentos__isnull=True)
+    requisitos_sin_documentos.delete()
+
+    requisitos_creados = []
+
+    for catalogo_req in catalogo_requisitos:
+        requisito, created = Requisito.objects.get_or_create(
+            solicitante=solicitante,
+            nombre=catalogo_req.nombre,
+            defaults={
+                "estado": ESTADO_DOCUMENTO_FALTANTE,
+                "carga_habilitada": True,
+            }
+        )
+        requisitos_creados.append(requisito)
+
+    return ResultadoRegistroRequisitos(
+        exitoso=True,
+        mensaje=f"Se asignaron {len(requisitos_creados)} requisitos al solicitante.",
+        requisitos=requisitos_creados
+    )
+
+
+def obtener_requisitos_sugeridos_por_visa(tipo_visa: str) -> list[str]:
+    """
+    Obtiene los requisitos sugeridos para un tipo de visa.
+    Estos son solo sugerencias, el agente decide cuáles asignar.
+
+    Args:
+        tipo_visa: El tipo de visa.
+
+    Returns:
+        Lista de nombres de requisitos sugeridos.
+    """
+    return REQUISITOS_POR_VISA.get(tipo_visa, [])
+

@@ -7,6 +7,7 @@ from django.utils import timezone as dj_timezone
 from django.core.exceptions import ValidationError as DjValidationError
 from datetime import timedelta, time
 
+from django.contrib.auth.models import User
 from migration.models import Agente, Cita, Solicitante, HORA_INICIO_ATENCION
 from migration.services.scheduling import (
     agendar_cita,
@@ -110,8 +111,26 @@ def obtener_o_crear_agentes():
     Returns:
         QuerySet de agentes activos.
     """
-    Agente.objects.get_or_create(nombre="Agente A", defaults={"activo": True})
-    Agente.objects.get_or_create(nombre="Agente B", defaults={"activo": True})
+    # Crear usuario y agente A
+    user_a, _ = User.objects.get_or_create(
+        username="agente_a",
+        defaults={"password": "test_password_a"}
+    )
+    Agente.objects.get_or_create(
+        nombre="Agente A",
+        defaults={"usuario": user_a, "activo": True}
+    )
+
+    # Crear usuario y agente B
+    user_b, _ = User.objects.get_or_create(
+        username="agente_b",
+        defaults={"password": "test_password_b"}
+    )
+    Agente.objects.get_or_create(
+        nombre="Agente B",
+        defaults={"usuario": user_b, "activo": True}
+    )
+
     return Agente.objects.filter(activo=True)
 
 

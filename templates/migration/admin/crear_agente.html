@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Agente - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-person-plus-fill me-2"></i>Crear Nuevo Agente
+    </h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-badge me-2"></i>Datos del Nuevo Agente
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <h6 class="text-muted mb-3"><i class="bi bi-key me-2"></i>Credenciales de Acceso</h6>
+
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">Nombre de Usuario <span class="text-danger">*</span></label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_password1" class="form-label">Contraseña <span class="text-danger">*</span></label>
+                            {{ form.password1 }}
+                            {% if form.password1.errors %}
+                                <div class="text-danger small">{{ form.password1.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_password2" class="form-label">Confirmar Contraseña <span class="text-danger">*</span></label>
+                            {{ form.password2 }}
+                            {% if form.password2.errors %}
+                                <div class="text-danger small">{{ form.password2.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6 class="text-muted mb-3"><i class="bi bi-person-lines-fill me-2"></i>Información del Agente</h6>
+
+                    <div class="mb-4">
+                        <label for="id_nombre" class="form-label">Nombre Completo <span class="text-danger">*</span></label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger small">{{ form.nombre.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-2"></i>
+                        El agente podrá iniciar sesión inmediatamente después de ser creado.
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:admin_dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> Crear Agente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Permisos del Agente
+            </div>
+            <div class="card-body">
+                <p class="small">Los agentes tienen acceso a:</p>
+                <ul class="small">
+                    <li>Ver y gestionar solicitantes</li>
+                    <li>Atender citas</li>
+                    <li>Revisar documentos</li>
+                    <li>Aprobar/Rechazar carpetas</li>
+                    <li>Registrar resultados de visa</li>
+                </ul>
+                <hr>
+                <p class="small text-muted mb-0">
+                    <i class="bi bi-shield-exclamation me-1"></i>
+                    Los agentes <strong>no pueden</strong> crear otros agentes ni acceder al panel de administración.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

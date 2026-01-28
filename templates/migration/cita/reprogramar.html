@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Reprogramar Cita - CRM Migración{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-container {
+        position: relative;
+    }
+    .calendar-container input[type="date"] {
+        padding-right: 2.5rem;
+    }
+    .calendar-icon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-calendar2-range me-2"></i>Reprogramar Cita</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-circle me-2"></i>Cita de: <strong>{{ cita.solicitante.nombre }}</strong>
+            </div>
+            <div class="card-body">
+                <!-- Información de la cita actual -->
+                <div class="alert alert-secondary mb-4">
+                    <h6 class="alert-heading"><i class="bi bi-calendar-event me-2"></i>Cita Actual</h6>
+                    <p class="mb-1"><strong>Fecha:</strong> {{ cita.inicio|date:"l, d F Y" }}</p>
+                    <p class="mb-1"><strong>Hora:</strong> {{ cita.inicio|time:"H:i" }} - {{ cita.fin|time:"H:i" }}</p>
+                    <p class="mb-0"><strong>Agente:</strong> {{ cita.agente.nombre }}</p>
+                </div>
+
+                <h5 class="mb-3"><i class="bi bi-arrow-repeat me-2"></i>Nueva Fecha y Hora</h5>
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <p class="mb-0">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="id_fecha" class="form-label">
+                            <i class="bi bi-calendar-event me-1"></i>{{ form.fecha.label }}
+                        </label>
+                        <div class="calendar-container">
+                            {{ form.fecha }}
+                            <i class="bi bi-calendar3 calendar-icon"></i>
+                        </div>
+                        {% if form.fecha.errors %}
+                            <div class="text-danger small mt-1">{{ form.fecha.errors.0 }}</div>
+                        {% endif %}
+                        <small class="text-muted">Solo días laborales (lunes a sábado), máximo 2 semanas.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_hora" class="form-label">
+                            <i class="bi bi-clock me-1"></i>{{ form.hora.label }}
+                        </label>
+                        {{ form.hora }}
+                        {% if form.hora.errors %}
+                            <div class="text-danger small mt-1">{{ form.hora.errors.0 }}</div>
+                        {% endif %}
+                        <small class="text-muted">Horario de atención: 08:00 - 12:00</small>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Nota:</strong> Las reprogramaciones deben realizarse con al menos 3 días de anticipación.
+                        Se asignará un agente disponible para el nuevo horario.
+                        No se pueden reprogramar citas a fechas y horarios anteriores a la hora actual.
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:solicitante_detalle' pk=cita.solicitante.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-calendar2-range me-1"></i> Reprogramar Cita
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

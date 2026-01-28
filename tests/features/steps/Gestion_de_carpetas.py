@@ -3,8 +3,19 @@
 Steps para la característica de Gestión del estado de carpetas migratorias.
 Implementa los pasos BDD para los escenarios de aprobación y cierre de carpetas.
 """
+import os
+import sys
+import django
+
+# Configurar Django antes de importar modelos
+ruta_proyecto = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, ruta_proyecto)
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mi_proyecto.settings')
+django.setup()
+
 from behave import given, when, then
 from django.core.exceptions import ValidationError as DjValidationError
+from django.contrib.auth.models import User
 
 from migration.models import (
     Solicitante,

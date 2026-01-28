@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Tipo de Visa - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-passport-fill me-2"></i>Crear Nuevo Tipo de Visa
+    </h1>
+    <span class="badge bg-danger">Administrador</span>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-plus-circle me-2"></i>Nuevo Tipo de Visa
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="id_codigo" class="form-label">{{ form.codigo.label }}</label>
+                        {{ form.codigo }}
+                        {% if form.codigo.help_text %}
+                            <small class="form-text text-muted">{{ form.codigo.help_text }}</small>
+                        {% endif %}
+                        {% if form.codigo.errors %}
+                            <div class="text-danger small">{{ form.codigo.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_nombre" class="form-label">{{ form.nombre.label }}</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger small">{{ form.nombre.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_descripcion" class="form-label">{{ form.descripcion.label }}</label>
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}
+                            <div class="text-danger small">{{ form.descripcion.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors.0 }}
+                        </div>
+                    {% endif %}
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:admin_dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-info">
+                            <i class="bi bi-check-lg me-1"></i> Crear Tipo de Visa
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Información
+            </div>
+            <div class="card-body">
+                <h6>¿Qué es un Tipo de Visa?</h6>
+                <p class="text-muted small">
+                    Los tipos de visa definen las categorías de trámites migratorios que los solicitantes pueden solicitar.
+                    Cada tipo de visa puede tener requisitos específicos asociados.
+                </p>
+
+                <hr>
+
+                <h6>Recomendaciones</h6>
+                <ul class="small text-muted">
+                    <li><strong>Código:</strong> Use un identificador corto y sin espacios (ej: "diplomatica", "negocios")</li>
+                    <li><strong>Nombre:</strong> Use un nombre descriptivo que será visible para los usuarios</li>
+                    <li><strong>Descripción:</strong> Opcional, pero útil para documentar el propósito de la visa</li>
+                </ul>
+
+                <hr>
+
+                <h6>Ejemplos de Tipos de Visa</h6>
+                <ul class="small">
+                    <li><strong>Diplomática:</strong> Para personal diplomático y sus familias</li>
+                    <li><strong>Negocios:</strong> Para viajes de negocios cortos</li>
+                    <li><strong>Médica:</strong> Para tratamientos médicos en el extranjero</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

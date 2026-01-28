@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+
+{% block title %}Panel del Agente - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-speedometer2 me-2"></i>Panel del Agente</h1>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-primary">
+            <div class="card-body dashboard-stat">
+                <i class="bi bi-file-earmark-text" style="font-size: 2rem; color: #3498db;"></i>
+                <div class="stat-number">{{ total_pendientes }}</div>
+                <div class="stat-label">Documentos por Revisar</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-success">
+            <div class="card-body dashboard-stat">
+                <i class="bi bi-folder-check" style="font-size: 2rem; color: #27ae60;"></i>
+                <div class="stat-number">{{ total_carpetas_aprobadas }}</div>
+                <div class="stat-label">Carpetas Aprobadas (Esperando Visa)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-warning">
+            <div class="card-body dashboard-stat">
+                <i class="bi bi-calendar-event" style="font-size: 2rem; color: #f39c12;"></i>
+                <div class="stat-number">{{ total_citas_hoy }}</div>
+                <div class="stat-label">Citas para Hoy</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Documentos Pendientes de Revisión -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-text me-2"></i>Documentos Pendientes de Revisión</span>
+                <span class="badge bg-primary">{{ documentos_pendientes|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if documentos_pendientes %}
+                <div class="list-group list-group-flush">
+                    {% for documento in documentos_pendientes|slice:":5" %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <h6 class="mb-1">{{ documento.requisito.nombre|title }}</h6>
+                            <small class="text-muted">
+                                {{ documento.requisito.solicitante.nombre }} -
+                                v{{ documento.version }} -
+                                {{ documento.nombre_archivo }}
+                            </small>
+                        </div>
+                        <div class="btn-group">
+                            {% if documento.ruta_archivo %}
+                            <a href="{% url 'migration:ver_documento' documento_pk=documento.pk %}"
+                               target="_blank"
+                               class="btn btn-sm btn-outline-secondary"
+                               title="Ver documento">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'migration:revisar_documento' documento_pk=documento.pk %}"
+                               class="btn btn-sm btn-primary">
+                                <i class="bi bi-eye me-1"></i>Revisar
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if documentos_pendientes|length > 5 %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        Mostrando 5 de {{ documentos_pendientes|length }} documentos
+                    </small>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #27ae60;"></i>
+                    <p class="text-muted mt-2">No hay documentos pendientes de revisión</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Carpetas Aprobadas -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-folder-check me-2"></i>Carpetas Esperando Resultado de Visa</span>
+                <span class="badge bg-success">{{ carpetas_aprobadas|length }}</span>
+            </div>
+            <div class="card-body">
+                {% if carpetas_aprobadas %}
+                <div class="list-group list-group-flush">
+                    {% for carpeta in carpetas_aprobadas|slice:":5" %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <h6 class="mb-1">{{ carpeta.solicitante.nombre }}</h6>
+                            <small class="text-muted">
+                                {{ carpeta.solicitante.get_tipo_visa_display }} -
+                                Cédula: {{ carpeta.solicitante.cedula|default:"N/A" }}
+                            </small>
+                        </div>
+                        <a href="{% url 'migration:registrar_resultado' carpeta_pk=carpeta.pk %}"
+                           class="btn btn-sm btn-success">
+                            <i class="bi bi-check2-square me-1"></i>Registrar Resultado
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if carpetas_aprobadas|length > 5 %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'migration:lista_carpetas' %}?estado=aprobado" class="btn btn-sm btn-outline-success">
+                        Ver todas las carpetas
+                    </a>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-folder-x" style="font-size: 3rem; color: #ccc;"></i>
+                    <p class="text-muted mt-2">No hay carpetas esperando resultado</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Citas del Día -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar-event me-2"></i>Citas Programadas para Hoy</span>
+        <span class="badge bg-warning text-dark">{{ citas_hoy|length }}</span>
+    </div>
+    <div class="card-body">
+        {% if citas_hoy %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Solicitante</th>
+                        <th>Tipo de Visa</th>
+                        <th>Agente</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cita in citas_hoy %}
+                    <tr>
+                        <td>{{ cita.inicio|time:"H:i" }} - {{ cita.fin|time:"H:i" }}</td>
+                        <td>
+                            <a href="{% url 'migration:solicitante_detalle' pk=cita.solicitante.pk %}">
+                                {{ cita.solicitante.nombre }}
+                            </a>
+                        </td>
+                        <td>
+                            {% if cita.solicitante.tipo_visa %}
+                                <span class="badge bg-info">{{ cita.solicitante.get_tipo_visa_display }}</span>
+                            {% else %}
+                                <span class="text-muted">Sin asignar</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ cita.agente.nombre }}</td>
+                        <td class="text-center">
+                            <a href="{% url 'migration:atender_cita' cita_pk=cita.pk %}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-check2-square me-1"></i>Atender
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <i class="bi bi-calendar-x" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-2">No hay citas programadas para hoy</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

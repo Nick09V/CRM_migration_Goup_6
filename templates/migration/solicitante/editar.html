@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar {{ solicitante.nombre }} - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-pencil-square me-2"></i>Editar Solicitante</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-lines-fill me-2"></i>Datos de {{ solicitante.nombre }}
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="id_nombre" class="form-label">{{ form.nombre.label }} <span class="text-danger">*</span></label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger small">{{ form.nombre.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_cedula" class="form-label">{{ form.cedula.label }}</label>
+                        {{ form.cedula }}
+                        {% if form.cedula.errors %}
+                            <div class="text-danger small">{{ form.cedula.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_telefono" class="form-label">{{ form.telefono.label }}</label>
+                            {{ form.telefono }}
+                            {% if form.telefono.errors %}
+                                <div class="text-danger small">{{ form.telefono.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_email" class="form-label">{{ form.email.label }}</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_tipo_visa" class="form-label">{{ form.tipo_visa.label }}</label>
+                        {{ form.tipo_visa }}
+                        {% if form.tipo_visa.errors %}
+                            <div class="text-danger small">{{ form.tipo_visa.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:solicitante_detalle' pk=solicitante.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

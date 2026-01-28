@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+
+{% block title %}Revisar Documento - CRM Migración{% endblock %}
+
+{% block extra_css %}
+<style>
+    .document-viewer {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        min-height: 500px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .document-viewer iframe {
+        width: 100%;
+        height: 600px;
+        border: none;
+        border-radius: 0.375rem;
+    }
+    .document-viewer img {
+        max-width: 100%;
+        max-height: 600px;
+        object-fit: contain;
+    }
+    .review-panel {
+        position: sticky;
+        top: 20px;
+    }
+    .action-btn-group .btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-check me-2"></i>Revisar Documento</h1>
+    <div>
+        <a href="{% url 'migration:agente_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Volver al Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Información del Documento y Solicitante -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <small class="text-muted">Documento:</small>
+                <strong class="d-block">{{ documento.requisito.nombre|title }}</strong>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Solicitante:</small>
+                <strong class="d-block">{{ documento.requisito.solicitante.nombre }}</strong>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted">Cédula:</small>
+                <strong class="d-block">{{ documento.requisito.solicitante.cedula|default:"N/A" }}</strong>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted">Tipo Visa:</small>
+                <span class="badge bg-info">{{ documento.requisito.solicitante.get_tipo_visa_display }}</span>
+            </div>
+            <div class="col-md-1 text-end">
+                <small class="text-muted">v{{ documento.version }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Columna Izquierda: Visor de Documento -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-text me-2"></i>{{ documento.nombre_archivo }}</span>
+                {% if documento.ruta_archivo %}
+                <div class="btn-group btn-group-sm">
+                    <a href="{% url 'migration:ver_documento' documento_pk=documento.pk %}"
+                       target="_blank"
+                       class="btn btn-outline-primary"
+                       title="Abrir en nueva pestaña">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                    <a href="{% url 'migration:descargar_documento' documento_pk=documento.pk %}"
+                       class="btn btn-outline-secondary"
+                       title="Descargar">
+                        <i class="bi bi-download"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body p-2">
+                {% if documento.ruta_archivo and archivo_existe %}
+                    {% if es_imagen %}
+                    <!-- Visor de Imagen -->
+                    <div class="document-viewer" id="visor-contenedor">
+                        <img src="{% url 'migration:ver_documento' documento_pk=documento.pk %}"
+                             alt="{{ documento.nombre_archivo }}"
+                             class="img-fluid"
+                             id="visor-imagen"
+                             onerror="mostrarErrorVisor()">
+                    </div>
+                    {% elif es_pdf %}
+                    <!-- Visor de PDF -->
+                    <div class="document-viewer" id="visor-contenedor">
+                        <iframe src="{% url 'migration:ver_documento' documento_pk=documento.pk %}"
+                                title="{{ documento.nombre_archivo }}"
+                                id="visor-pdf"
+                                onload="verificarIframe(this)">
+                        </iframe>
+                    </div>
+                    {% else %}
+                    <!-- Archivo no previsualizable -->
+                    <div class="document-viewer">
+                        <div class="text-center">
+                            <i class="bi bi-file-earmark" style="font-size: 4rem; color: #6c757d;"></i>
+                            <p class="mt-3 text-muted">Este tipo de archivo no se puede previsualizar</p>
+                            <a href="{% url 'migration:descargar_documento' documento_pk=documento.pk %}"
+                               class="btn btn-primary">
+                                <i class="bi bi-download me-1"></i> Descargar para revisar
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Mensaje alternativo (oculto por defecto) -->
+                    <div class="document-viewer" id="visor-alternativo" style="display: none;">
+                        <div class="text-center">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 4rem; color: #ffc107;"></i>
+                            <p class="mt-3 text-muted">No se pudo cargar la vista previa del documento</p>
+                            <p class="small text-muted">El archivo puede no existir o haber un problema de acceso</p>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <a href="{% url 'migration:ver_documento' documento_pk=documento.pk %}"
+                                   target="_blank"
+                                   class="btn btn-primary">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i> Abrir en nueva pestaña
+                                </a>
+                                <a href="{% url 'migration:descargar_documento' documento_pk=documento.pk %}"
+                                   class="btn btn-outline-secondary">
+                                    <i class="bi bi-download me-1"></i> Descargar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% elif documento.ruta_archivo and not archivo_existe %}
+                <!-- El archivo no existe físicamente -->
+                <div class="document-viewer">
+                    <div class="text-center">
+                        <i class="bi bi-file-earmark-x" style="font-size: 4rem; color: #dc3545;"></i>
+                        <p class="mt-3 text-danger"><strong>Archivo no encontrado</strong></p>
+                        <p class="small text-muted">El archivo registrado no existe en el sistema de archivos.</p>
+                        <p class="small text-muted">Ruta esperada: <code>{{ documento.ruta_archivo }}</code></p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="document-viewer">
+                    <div class="text-center">
+                        <i class="bi bi-file-earmark-x" style="font-size: 4rem; color: #dc3545;"></i>
+                        <p class="mt-3 text-muted">Este documento no tiene un archivo físico asociado</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer small text-muted">
+                <i class="bi bi-clock me-1"></i> Subido: {{ documento.creado_en|date:"d/m/Y H:i" }}
+                {% if documento.ruta_archivo %}
+                <span class="float-end"><i class="bi bi-folder me-1"></i>{{ documento.ruta_archivo|truncatechars:50 }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Panel de Acciones -->
+    <div class="col-lg-4 mb-4">
+        <div class="review-panel">
+            <!-- Formulario de Revisión -->
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-clipboard-check me-2"></i>Decisión de Revisión
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Botones de Acción Grandes -->
+                        <div class="action-btn-group d-grid gap-2 mb-4">
+                            <div class="form-check p-0">
+                                <input type="radio" class="btn-check" name="accion" id="accion_aprobar" value="aprobar" autocomplete="off">
+                                <label class="btn btn-outline-success w-100 d-flex align-items-center justify-content-center" for="accion_aprobar">
+                                    <i class="bi bi-check-circle-fill me-2" style="font-size: 1.25rem;"></i>
+                                    <span>Aprobar Documento</span>
+                                </label>
+                            </div>
+                            <div class="form-check p-0">
+                                <input type="radio" class="btn-check" name="accion" id="accion_rechazar" value="rechazar" autocomplete="off">
+                                <label class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center" for="accion_rechazar">
+                                    <i class="bi bi-x-circle-fill me-2" style="font-size: 1.25rem;"></i>
+                                    <span>Rechazar Documento</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {% if form.accion.errors %}
+                            <div class="alert alert-danger small py-2">{{ form.accion.errors.0 }}</div>
+                        {% endif %}
+
+                        <!-- Observaciones -->
+                        <div class="mb-3" id="observaciones-container">
+                            <label for="id_observaciones" class="form-label">
+                                <i class="bi bi-chat-left-text me-1"></i> Observaciones
+                                <span class="text-danger" id="obs-required" style="display: none;">*</span>
+                            </label>
+                            {{ form.observaciones }}
+                            {% if form.observaciones.errors %}
+                                <div class="text-danger small">{{ form.observaciones.errors.0 }}</div>
+                            {% endif %}
+                            <small class="text-muted" id="obs-help">Obligatorias si rechaza el documento.</small>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger small py-2">
+                            {{ form.non_field_errors.0 }}
+                        </div>
+                        {% endif %}
+
+                        <hr>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-send-fill me-1"></i> Enviar Revisión
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Guía Rápida -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <i class="bi bi-lightbulb me-2"></i>Guía Rápida
+                </div>
+                <div class="card-body small">
+                    <p class="mb-2"><strong class="text-success"><i class="bi bi-check me-1"></i>Aprobar:</strong></p>
+                    <ul class="mb-3 ps-3">
+                        <li>Documento legible y completo</li>
+                        <li>Información correcta y vigente</li>
+                    </ul>
+                    <p class="mb-2"><strong class="text-danger"><i class="bi bi-x me-1"></i>Rechazar:</strong></p>
+                    <ul class="mb-0 ps-3">
+                        <li>Ilegible o incompleto</li>
+                        <li>Información incorrecta o vencida</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Funciones para manejar errores del visor
+function mostrarErrorVisor() {
+    const contenedor = document.getElementById('visor-contenedor');
+    const alternativo = document.getElementById('visor-alternativo');
+    if (contenedor && alternativo) {
+        contenedor.style.display = 'none';
+        alternativo.style.display = 'flex';
+    }
+}
+
+function verificarIframe(iframe) {
+    // Intentar verificar si el iframe cargó correctamente
+    try {
+        // Si el iframe muestra un error 404 o similar, mostrar alternativo
+        if (iframe.contentDocument && iframe.contentDocument.body) {
+            const bodyText = iframe.contentDocument.body.innerText || '';
+            if (bodyText.includes('404') || bodyText.includes('Not Found') || bodyText.includes('Error')) {
+                mostrarErrorVisor();
+            }
+        }
+    } catch (e) {
+        // Error de cross-origin es normal para PDFs, no hacer nada
+        console.log('Visor cargado (verificación cross-origin no disponible)');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const aprobarBtn = document.getElementById('accion_aprobar');
+    const rechazarBtn = document.getElementById('accion_rechazar');
+    const obsRequired = document.getElementById('obs-required');
+    const obsHelp = document.getElementById('obs-help');
+    const observaciones = document.querySelector('textarea[name="observaciones"]');
+
+    function updateObsVisibility() {
+        if (rechazarBtn && rechazarBtn.checked) {
+            if (obsRequired) obsRequired.style.display = 'inline';
+            if (obsHelp) {
+                obsHelp.textContent = 'Debe indicar el motivo del rechazo.';
+                obsHelp.classList.add('text-danger');
+                obsHelp.classList.remove('text-muted');
+            }
+            if (observaciones) observaciones.setAttribute('required', 'required');
+        } else {
+            if (obsRequired) obsRequired.style.display = 'none';
+            if (obsHelp) {
+                obsHelp.textContent = 'Obligatorias si rechaza el documento.';
+                obsHelp.classList.remove('text-danger');
+                obsHelp.classList.add('text-muted');
+            }
+            if (observaciones) observaciones.removeAttribute('required');
+        }
+    }
+
+    if (aprobarBtn) aprobarBtn.addEventListener('change', updateObsVisibility);
+    if (rechazarBtn) rechazarBtn.addEventListener('change', updateObsVisibility);
+
+    // Estado inicial
+    updateObsVisibility();
+
+    // Verificar si la imagen falló al cargar
+    const imagen = document.getElementById('visor-imagen');
+    if (imagen && !imagen.complete) {
+        imagen.addEventListener('error', mostrarErrorVisor);
+    } else if (imagen && imagen.naturalWidth === 0) {
+        mostrarErrorVisor();
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -11,26 +11,46 @@ DURACION_CITA_HORAS = 1
 MAXIMO_SEMANAS_ANTICIPACION = 2
 DIAS_LABORALES = [0, 1, 2, 3, 4, 5]  # Lunes a Sábado
 
-# Tipos de visa soportados
+# Tipos de visa soportados (constantes para compatibilidad)
 TIPO_VISA_ESTUDIANTIL = "estudiantil"
 TIPO_VISA_TRABAJO = "trabajo"
 TIPO_VISA_RESIDENCIAL = "residencial"
 TIPO_VISA_TURISTA = "turista"
 
-TIPOS_VISA = (
+# Tupla de tipos de visa por defecto (se usa para inicialización)
+TIPOS_VISA_DEFAULT = (
     (TIPO_VISA_ESTUDIANTIL, "Estudiantil"),
     (TIPO_VISA_TRABAJO, "Trabajo"),
     (TIPO_VISA_RESIDENCIAL, "Residencial"),
     (TIPO_VISA_TURISTA, "Turista"),
 )
 
-# Requisitos por tipo de visa
-REQUISITOS_POR_VISA = {
+# TIPOS_VISA se genera dinámicamente desde la base de datos
+# Esta función se usa para obtener los tipos de visa para formularios
+def obtener_tipos_visa_choices():
+    """Obtiene los tipos de visa activos como choices para formularios."""
+    try:
+        # TipoVisa se define más adelante en este mismo archivo
+        tipos = TipoVisa.objects.filter(activo=True).values_list('codigo', 'nombre')
+        if tipos.exists():
+            return list(tipos)
+    except Exception:
+        pass
+    return list(TIPOS_VISA_DEFAULT)
+
+# Mantener TIPOS_VISA para compatibilidad (se actualiza dinámicamente)
+TIPOS_VISA = TIPOS_VISA_DEFAULT
+
+# Requisitos sugeridos por tipo de visa (solo como referencia, no se usan para asignación automática)
+REQUISITOS_SUGERIDOS_POR_VISA = {
     TIPO_VISA_ESTUDIANTIL: ["ci", "carta aceptación", "solvencia económica", "certificado idioma"],
     TIPO_VISA_TRABAJO: ["ci", "oferta laboral", "experiencia", "antecedentes", "pruebas calificación"],
     TIPO_VISA_RESIDENCIAL: ["ci", "sustento económico", "seguro médico", "acreditación arraigo"],
     TIPO_VISA_TURISTA: ["ci", "itinerario", "reserva hotel", "solvencia económica"],
 }
+
+# Mantener REQUISITOS_POR_VISA para compatibilidad con código existente
+REQUISITOS_POR_VISA = REQUISITOS_SUGERIDOS_POR_VISA
 
 # Estados de documentos
 ESTADO_DOCUMENTO_PENDIENTE = "pendiente"
@@ -59,6 +79,108 @@ ESTADOS_CARPETA = (
 )
 
 
+class CatalogoRequisito(models.Model):
+    """
+    Catálogo de requisitos disponibles en el sistema.
+    El agente puede seleccionar de este catálogo los requisitos a asignar a cada solicitante.
+    """
+    nombre = models.CharField("Nombre", max_length=100, unique=True)
+    descripcion = models.TextField("Descripción", blank=True)
+    activo = models.BooleanField("Activo", default=True)
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Catálogo de Requisito"
+        verbose_name_plural = "Catálogo de Requisitos"
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+    @classmethod
+    def obtener_requisitos_activos(cls):
+        """Obtiene todos los requisitos activos del catálogo."""
+        return cls.objects.filter(activo=True)
+
+    @classmethod
+    def inicializar_catalogo(cls):
+        """
+        Inicializa el catálogo con requisitos básicos si está vacío.
+        Útil para migración inicial o setup del sistema.
+        """
+        requisitos_basicos = [
+            ("ci", "Cédula de identidad o documento de identificación"),
+            ("carta aceptación", "Carta de aceptación de institución educativa"),
+            ("solvencia económica", "Documentos que demuestren solvencia económica"),
+            ("certificado idioma", "Certificado de dominio del idioma"),
+            ("oferta laboral", "Carta de oferta laboral del empleador"),
+            ("experiencia", "Documentos que acrediten experiencia laboral"),
+            ("antecedentes", "Certificado de antecedentes penales"),
+            ("pruebas calificación", "Pruebas de calificación profesional"),
+            ("sustento económico", "Documentos de sustento económico"),
+            ("seguro médico", "Póliza de seguro médico vigente"),
+            ("acreditación arraigo", "Documentos que acrediten arraigo"),
+            ("itinerario", "Itinerario de viaje"),
+            ("reserva hotel", "Reserva de hotel o alojamiento"),
+        ]
+        for nombre, descripcion in requisitos_basicos:
+            cls.objects.get_or_create(
+                nombre=nombre,
+                defaults={"descripcion": descripcion, "activo": True}
+            )
+
+
+class TipoVisa(models.Model):
+    """
+    Modelo para gestionar tipos de visa dinámicamente.
+    El administrador puede crear nuevos tipos de visa.
+    """
+    codigo = models.CharField(
+        "Código",
+        max_length=50,
+        unique=True,
+        help_text="Identificador único del tipo de visa (ej: estudiantil, trabajo)"
+    )
+    nombre = models.CharField(
+        "Nombre",
+        max_length=100,
+        help_text="Nombre descriptivo del tipo de visa"
+    )
+    descripcion = models.TextField("Descripción", blank=True)
+    activo = models.BooleanField("Activo", default=True)
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Tipo de Visa"
+        verbose_name_plural = "Tipos de Visa"
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+    @classmethod
+    def obtener_tipos_activos(cls):
+        """Obtiene todos los tipos de visa activos."""
+        return cls.objects.filter(activo=True)
+
+    @classmethod
+    def inicializar_tipos_default(cls):
+        """
+        Inicializa los tipos de visa por defecto si no existen.
+        """
+        tipos_default = [
+            ("estudiantil", "Estudiantil", "Visa para estudios académicos"),
+            ("trabajo", "Trabajo", "Visa para empleo y trabajo"),
+            ("residencial", "Residencial", "Visa para residencia permanente"),
+            ("turista", "Turista", "Visa para turismo y visitas cortas"),
+        ]
+        for codigo, nombre, descripcion in tipos_default:
+            cls.objects.get_or_create(
+                codigo=codigo,
+                defaults={"nombre": nombre, "descripcion": descripcion, "activo": True}
+            )
+
+
 class Solicitante(models.Model):
     """Representa a una persona que solicita citas migratorias."""
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='solicitante', null=True, blank=True)
@@ -68,8 +190,7 @@ class Solicitante(models.Model):
     email = models.EmailField("Email", blank=True)
     tipo_visa = models.CharField(
         "Tipo de Visa",
-        max_length=20,
-        choices=TIPOS_VISA,
+        max_length=50,
         blank=True,
         null=True
     )
@@ -83,6 +204,16 @@ class Solicitante(models.Model):
     def __str__(self):
         return self.nombre
 
+    def get_tipo_visa_display(self):
+        """Obtiene el nombre del tipo de visa desde la base de datos."""
+        if not self.tipo_visa:
+            return "Sin asignar"
+        try:
+            tipo = TipoVisa.objects.get(codigo=self.tipo_visa)
+            return tipo.nombre
+        except TipoVisa.DoesNotExist:
+            return self.tipo_visa.title()
+
     def tiene_cita_pendiente(self):
         """Verifica si el solicitante tiene una cita pendiente activa."""
         return self.citas.filter(estado=Cita.ESTADO_PENDIENTE).exists()
@@ -90,9 +221,29 @@ class Solicitante(models.Model):
 
 class Agente(models.Model):
     """Representa a un agente que atiende citas migratorias."""
-    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='agente', null=True, blank=True)
-    nombre = models.CharField("Nombre", max_length=100, unique=True)
+    usuario = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='agente',
+        verbose_name='Usuario',
+        null=True,
+        blank=True
+    )
+    nombre = models.CharField(
+        "Nombre completo",
+        max_length=200
+    )
     activo = models.BooleanField("Activo", default=True)
+    creado_en = models.DateTimeField(
+        "Fecha de creación",
+        auto_now_add=True,
+        null=True
+    )
+    actualizado_en = models.DateTimeField(
+        "Última actualización",
+        auto_now=True,
+        null=True
+    )
 
     class Meta:
         verbose_name = "Agente"
@@ -101,6 +252,13 @@ class Agente(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def tiene_cita_en_horario(self, inicio):
+        """Verifica si el agente tiene una cita pendiente en el horario dado."""
+        return self.citas.filter(
+            inicio=inicio,
+            estado=Cita.ESTADO_PENDIENTE
+        ).exists()
 
 
 class Cita(models.Model):
@@ -170,7 +328,8 @@ class Cita(models.Model):
 
     def _validar_rango_fechas(self, fecha_cita):
         """Valida que la cita esté dentro del rango permitido (hoy hasta 2 semanas)."""
-        hoy = timezone.localtime(timezone.now()).date()
+        ahora = timezone.localtime(timezone.now())
+        hoy = ahora.date()
         fecha_maxima = hoy + timedelta(weeks=MAXIMO_SEMANAS_ANTICIPACION)
 
         if fecha_cita < hoy:
@@ -179,6 +338,16 @@ class Cita(models.Model):
             raise ValidationError(
                 f"Solo se pueden agendar citas hasta {MAXIMO_SEMANAS_ANTICIPACION} "
                 f"semanas a partir de hoy."
+            )
+
+    def _validar_hora_no_pasada(self, inicio_local):
+        """Valida que la hora de la cita no sea anterior a la hora actual del sistema."""
+        ahora = timezone.localtime(timezone.now())
+
+        if inicio_local <= ahora:
+            raise ValidationError(
+                "No se puede agendar una cita en una fecha y hora anterior a la actual. "
+                "Por favor, seleccione un horario futuro."
             )
 
     def _validar_cita_pendiente_existente(self):
@@ -202,6 +371,7 @@ class Cita(models.Model):
         self._validar_horario_atencion(inicio_local)
         self._validar_dia_laboral(inicio_local.date())
         self._validar_rango_fechas(inicio_local.date())
+        self._validar_hora_no_pasada(inicio_local)
         self._validar_cita_pendiente_existente()
 
     def save(self, *args, **kwargs):

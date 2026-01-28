@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Cancelar Cita - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-x-circle me-2 text-danger"></i>Cancelar Cita</h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Cancelación
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>¿Está seguro de cancelar esta cita?</h6>
+                    <p class="mb-0">Esta acción no se puede deshacer. Deberá agendar una nueva cita si desea continuar con el trámite.</p>
+                </div>
+
+                <div class="bg-light p-3 rounded mb-3">
+                    <h6 class="text-muted mb-2">Detalles de la cita:</h6>
+                    <p class="mb-1"><strong>Solicitante:</strong> {{ cita.solicitante.nombre }}</p>
+                    <p class="mb-1"><strong>Fecha:</strong> {{ cita.inicio|date:"l, d F Y" }}</p>
+                    <p class="mb-1"><strong>Hora:</strong> {{ cita.inicio|time:"H:i" }} - {{ cita.fin|time:"H:i" }}</p>
+                    <p class="mb-0"><strong>Agente:</strong> {{ cita.agente.nombre }}</p>
+                </div>
+
+                <div class="alert alert-info small">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Recuerde:</strong> Las cancelaciones solo son permitidas con más de 3 días de anticipación.
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:solicitante_detalle' pk=cita.solicitante.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Volver
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle me-1"></i> Confirmar Cancelación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
