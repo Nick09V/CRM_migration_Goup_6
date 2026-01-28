@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Steps para la característica de Registro de requisitos migratorios.
-Implementa los pasos BDD para los escenarios de registro de requisitos.
-
-Reutiliza la lógica de agendamiento para obtener citas pendientes.
-"""
 from behave import given, when, then, step
 from django.utils import timezone as dj_timezone
 from django.core.exceptions import ValidationError as DjValidationError
@@ -14,6 +7,9 @@ from migration.models import (
     Solicitante,
     Agente,
     Cita,
+    TipoVisa,
+    TipoRequisito,
+    RequisitoVisa,
     ESTADO_DOCUMENTO_FALTANTE,
 )
 from migration.services.requisitos import (
@@ -23,7 +19,6 @@ from migration.services.requisitos import (
     marcar_cita_exitosa,
 )
 from faker import Faker
-
 
 faker = Faker("es_ES")
 
@@ -79,9 +74,6 @@ def crear_cita_pendiente_hoy() -> Cita:
     """
     Crea una cita pendiente para el día de hoy.
 
-    Esto simula el escenario donde el solicitante tiene una cita
-    pendiente programada para hoy, permitiendo la asignación de requisitos.
-
     Returns:
         Instancia de Cita pendiente para hoy.
     """
@@ -120,7 +112,9 @@ def parsear_lista_requisitos(requisitos_str: str) -> list[str]:
 
 @given("que se tiene una cita pendiente")
 def paso_tiene_cita_pendiente(context):
-    """Prepara un solicitante con una cita pendiente para hoy."""
+    """
+    Prepara un solicitante con una cita pendiente para hoy.
+    """
     context.cita = crear_cita_pendiente_hoy()
     context.solicitante = context.cita.solicitante
     context.agente = context.cita.agente
@@ -138,13 +132,26 @@ def paso_tiene_cita_pendiente(context):
 
 @step("que el agente ha registrado que el cliente necesita la visa {tipo_visa}")
 def paso_agente_registra_tipo_visa(context, tipo_visa: str):
-    """El agente registra el tipo de visa que necesita el cliente."""
+    """
+    El agente registra el tipo de visa que necesita el cliente.
+
+    CAMBIO CLAVE: Creamos el tipo de visa si no existe.
+    """
     context.tipo_visa = tipo_visa.strip()
 
     # Si no existe solicitante, crearlo con cita
     if not hasattr(context, 'solicitante') or context.solicitante is None:
         context.cita = crear_cita_pendiente_hoy()
         context.solicitante = context.cita.solicitante
+
+    # CREAR el tipo de visa si no existe
+    TipoVisa.objects.get_or_create(
+        codigo=context.tipo_visa,
+        defaults={
+            'nombre': context.tipo_visa.title(),
+            'activo': True
+        }
+    )
 
     # Registrar el tipo de visa para el solicitante
     registrar_tipo_visa(context.solicitante, context.tipo_visa)
@@ -159,12 +166,26 @@ def paso_agente_registra_tipo_visa(context, tipo_visa: str):
 
 @step("se tienen los siguientes requisitos cargados")
 def paso_requisitos_cargados(context):
-    """Carga la lista global de requisitos disponibles en el sistema."""
+    """
+    Carga la lista global de requisitos disponibles en el sistema.
+
+    CAMBIO CLAVE: Creamos los TipoRequisito explícitamente aquí.
+    """
     context.requisitos_cargados = []
 
     for row in context.table:
-        requisito = row["requisitos_cargado"].strip()
-        context.requisitos_cargados.append(requisito)
+        codigo_requisito = row["requisitos_cargado"].strip()
+
+        # CREAR el TipoRequisito si no existe
+        TipoRequisito.objects.get_or_create(
+            codigo=codigo_requisito,
+            defaults={
+                'nombre': codigo_requisito.title(),
+                'activo': True
+            }
+        )
+
+        context.requisitos_cargados.append(codigo_requisito)
 
     assert len(context.requisitos_cargados) > 0, (
         "Debe haber al menos un requisito cargado en el sistema"
@@ -173,7 +194,11 @@ def paso_requisitos_cargados(context):
 
 @then('el agente asigna los siguientes requisitos al cliente "{requisitos}"')
 def paso_asignar_requisitos(context, requisitos: str):
-    """El agente asigna los requisitos correspondientes al tipo de visa."""
+    """
+    El agente asigna los requisitos correspondientes al tipo de visa.
+
+    CAMBIO CLAVE: Creamos las relaciones RequisitoVisa explícitamente.
+    """
     context.error = None
 
     # Parsear los requisitos esperados
@@ -181,6 +206,26 @@ def paso_asignar_requisitos(context, requisitos: str):
 
     # Obtener requisitos cargados (si existen)
     requisitos_cargados = getattr(context, 'requisitos_cargados', None)
+
+    # CREAR las relaciones RequisitoVisa para este test
+    tipo_visa = TipoVisa.objects.get(codigo=context.tipo_visa)
+
+    for orden, codigo_req in enumerate(requisitos_esperados):
+        # Asegurar que el TipoRequisito existe
+        tipo_req, _ = TipoRequisito.objects.get_or_create(
+            codigo=codigo_req,
+            defaults={'nombre': codigo_req.title(), 'activo': True}
+        )
+
+        # Crear la relación RequisitoVisa
+        RequisitoVisa.objects.get_or_create(
+            tipo_visa=tipo_visa,
+            tipo_requisito=tipo_req,
+            defaults={
+                'orden': orden,
+                'obligatorio': True
+            }
+        )
 
     try:
         # Asignar los requisitos específicos al solicitante
@@ -304,4 +349,3 @@ def paso_notifica_cita_invalida(context):
         f"El mensaje de error debe indicar que la cita no está en estado válido. "
         f"Mensaje recibido: {mensaje_error}"
     )
-

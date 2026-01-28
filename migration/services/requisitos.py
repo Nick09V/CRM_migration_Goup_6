@@ -11,7 +11,8 @@ from migration.models import (
     Solicitante,
     Requisito,
     Cita,
-    REQUISITOS_POR_VISA,
+    TipoVisa,
+    RequisitoVisa,
     ESTADO_DOCUMENTO_FALTANTE,
 )
 
@@ -32,14 +33,20 @@ def obtener_requisitos_por_visa(tipo_visa: str) -> list[str]:
         tipo_visa: El tipo de visa (estudiantil, trabajo, residencial, turista).
 
     Returns:
-        Lista de nombres de requisitos para el tipo de visa.
+        Lista de códigos de requisitos para el tipo de visa.
 
     Raises:
         ValidationError: Si el tipo de visa no es válido.
     """
-    requisitos = REQUISITOS_POR_VISA.get(tipo_visa)
-    if requisitos is None:
+    # Verificar que el tipo de visa existe y está activo
+    if not TipoVisa.existe(tipo_visa):
         raise ValidationError(f"Tipo de visa '{tipo_visa}' no válido.")
+
+    # Obtener requisitos desde la BD
+    requisitos = RequisitoVisa.obtener_requisitos_por_visa(tipo_visa)
+    if not requisitos:
+        raise ValidationError(f"No hay requisitos configurados para la visa '{tipo_visa}'.")
+
     return requisitos
 
 
@@ -57,8 +64,9 @@ def registrar_tipo_visa(solicitante: Solicitante, tipo_visa: str) -> Solicitante
     Raises:
         ValidationError: Si el tipo de visa no es válido.
     """
-    # Validar que el tipo de visa sea válido
-    obtener_requisitos_por_visa(tipo_visa)
+    # Validar que el tipo de visa exista en la BD
+    if not TipoVisa.existe(tipo_visa):
+        raise ValidationError(f"Tipo de visa '{tipo_visa}' no válido.")
 
     solicitante.tipo_visa = tipo_visa
     solicitante.save()

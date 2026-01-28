@@ -11,27 +11,6 @@ DURACION_CITA_HORAS = 1
 MAXIMO_SEMANAS_ANTICIPACION = 2
 DIAS_LABORALES = [0, 1, 2, 3, 4, 5]  # Lunes a Sábado
 
-# Tipos de visa soportados
-TIPO_VISA_ESTUDIANTIL = "estudiantil"
-TIPO_VISA_TRABAJO = "trabajo"
-TIPO_VISA_RESIDENCIAL = "residencial"
-TIPO_VISA_TURISTA = "turista"
-
-TIPOS_VISA = (
-    (TIPO_VISA_ESTUDIANTIL, "Estudiantil"),
-    (TIPO_VISA_TRABAJO, "Trabajo"),
-    (TIPO_VISA_RESIDENCIAL, "Residencial"),
-    (TIPO_VISA_TURISTA, "Turista"),
-)
-
-# Requisitos por tipo de visa
-REQUISITOS_POR_VISA = {
-    TIPO_VISA_ESTUDIANTIL: ["ci", "carta aceptación", "solvencia económica", "certificado idioma"],
-    TIPO_VISA_TRABAJO: ["ci", "oferta laboral", "experiencia", "antecedentes", "pruebas calificación"],
-    TIPO_VISA_RESIDENCIAL: ["ci", "sustento económico", "seguro médico", "acreditación arraigo"],
-    TIPO_VISA_TURISTA: ["ci", "itinerario", "reserva hotel", "solvencia económica"],
-}
-
 # Estados de documentos
 ESTADO_DOCUMENTO_PENDIENTE = "pendiente"
 ESTADO_DOCUMENTO_REVISADO = "revisado"
@@ -59,39 +38,188 @@ ESTADOS_CARPETA = (
 )
 
 
-class Solicitante(models.Model):
-    """Representa a una persona que solicita citas migratorias."""
-    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='solicitante', null=True, blank=True)
-    nombre = models.CharField("Nombre", max_length=120, unique=True)
-    cedula = models.CharField("Cédula", max_length=20, blank=True)
-    telefono = models.CharField("Teléfono", max_length=20, blank=True)
-    email = models.EmailField("Email", blank=True)
-    tipo_visa = models.CharField(
-        "Tipo de Visa",
-        max_length=20,
-        choices=TIPOS_VISA,
-        blank=True,
-        null=True
+# ============================================================================
+# MODELOS DE DATOS DE REFERENCIA
+# ============================================================================
+
+class TipoVisa(models.Model):
+    """
+    Representa un tipo de visa disponible en el sistema.
+    Los datos se crean en producción vía admin o migraciones de datos.
+    En tests, se crean directamente en los steps según sea necesario.
+    """
+    codigo = models.CharField(
+        "Código",
+        max_length=30,
+        unique=True,
+        help_text="Identificador único del tipo de visa (ej: estudiantil)"
     )
+    nombre = models.CharField(
+        "Nombre",
+        max_length=100,
+        help_text="Nombre descriptivo del tipo de visa (ej: Estudiantil)"
+    )
+    activo = models.BooleanField("Activo", default=True)
     creado_en = models.DateTimeField("Creado en", auto_now_add=True)
 
     class Meta:
-        verbose_name = "Solicitante"
-        verbose_name_plural = "Solicitantes"
+        verbose_name = "Tipo de Visa"
+        verbose_name_plural = "Tipos de Visa"
         ordering = ["nombre"]
 
     def __str__(self):
         return self.nombre
 
-    def tiene_cita_pendiente(self):
-        """Verifica si el solicitante tiene una cita pendiente activa."""
-        return self.citas.filter(estado=Cita.ESTADO_PENDIENTE).exists()
+    @classmethod
+    def obtener_tipos_activos(cls) -> list[str]:
+        """Retorna una lista de códigos de tipos de visa activos."""
+        return list(cls.objects.filter(activo=True).values_list('codigo', flat=True))
+
+    @classmethod
+    def obtener_por_codigo(cls, codigo: str):
+        """
+        Obtiene un TipoVisa por su código.
+
+        Args:
+            codigo: Código del tipo de visa.
+
+        Returns:
+            Instancia de TipoVisa o None si no existe.
+        """
+        return cls.objects.filter(codigo=codigo, activo=True).first()
+
+    @classmethod
+    def existe(cls, codigo: str) -> bool:
+        """Verifica si existe un tipo de visa activo con el código dado."""
+        return cls.objects.filter(codigo=codigo, activo=True).exists()
+
+
+class TipoRequisito(models.Model):
+    """
+    Representa un tipo de requisito/documento disponible en el sistema.
+    Define los tipos de documentos que pueden ser requeridos para visas.
+    """
+    codigo = models.CharField(
+        "Código",
+        max_length=50,
+        unique=True,
+        help_text="Identificador único del requisito (ej: ci)"
+    )
+    nombre = models.CharField(
+        "Nombre",
+        max_length=150,
+        help_text="Nombre descriptivo del requisito (ej: Cédula de Identidad)"
+    )
+    descripcion = models.TextField("Descripción", blank=True)
+    activo = models.BooleanField("Activo", default=True)
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Tipo de Requisito"
+        verbose_name_plural = "Tipos de Requisito"
+        ordering = ["nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+    @classmethod
+    def obtener_por_codigo(cls, codigo: str):
+        """Obtiene un TipoRequisito por su código."""
+        return cls.objects.filter(codigo=codigo, activo=True).first()
+
+
+class RequisitoVisa(models.Model):
+    """
+    Tabla pivote que asocia requisitos con tipos de visa.
+    Define qué requisitos necesita cada tipo de visa.
+    """
+    tipo_visa = models.ForeignKey(
+        TipoVisa,
+        on_delete=models.CASCADE,
+        related_name="requisitos_visa"
+    )
+    tipo_requisito = models.ForeignKey(
+        TipoRequisito,
+        on_delete=models.CASCADE,
+        related_name="visas_requisito"
+    )
+    orden = models.PositiveIntegerField(
+        "Orden",
+        default=0,
+        help_text="Orden en que se muestra el requisito para este tipo de visa"
+    )
+    obligatorio = models.BooleanField("Obligatorio", default=True)
+
+    class Meta:
+        verbose_name = "Requisito por Visa"
+        verbose_name_plural = "Requisitos por Visa"
+        ordering = ["tipo_visa", "orden"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tipo_visa", "tipo_requisito"],
+                name="uniq_tipovisa_tiporequisito"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.tipo_visa.codigo} - {self.tipo_requisito.codigo}"
+
+    @classmethod
+    def obtener_requisitos_por_visa(cls, tipo_visa_codigo: str) -> list[str]:
+        """
+        Obtiene los códigos de requisitos para un tipo de visa.
+
+        Args:
+            tipo_visa_codigo: Código del tipo de visa.
+
+        Returns:
+            Lista de códigos de requisitos ordenados.
+        """
+        return list(
+            cls.objects.filter(
+                tipo_visa__codigo=tipo_visa_codigo,
+                tipo_visa__activo=True,
+                tipo_requisito__activo=True
+            ).order_by('orden').values_list('tipo_requisito__codigo', flat=True)
+        )
+
+
+# ============================================================================
+# MODELOS PRINCIPALES DEL SISTEMA
+# ============================================================================
+
+class Solicitante(models.Model):
+    """Representa a una persona que solicita citas migratorias."""
+    usuario = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='solicitante',
+        null=True,
+        blank=True
+    )
+    nombre = models.CharField("Nombre", max_length=120, unique=True)
+    cedula = models.CharField("Cédula", max_length=20, unique=True, null=True, blank=True)
+    telefono = models.CharField("Teléfono", max_length=20, blank=True)
+    email = models.EmailField("Email", blank=True)
+    tipo_visa = models.CharField("Tipo de Visa", max_length=30, blank=True)
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Solicitante"
+        verbose_name_plural = "Solicitantes"
+        ordering = ["-creado_en"]
+
+    def __str__(self):
+        return self.nombre
+
+    def tiene_cita_pendiente(self) -> bool:
+        """Verifica si el solicitante tiene una cita pendiente."""
+        return self.citas.filter(estado='pendiente').exists()
 
 
 class Agente(models.Model):
-    """Representa a un agente que atiende citas migratorias."""
-    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='agente', null=True, blank=True)
-    nombre = models.CharField("Nombre", max_length=100, unique=True)
+    """Representa a un agente que atiende citas."""
+    nombre = models.CharField("Nombre", max_length=120)
     activo = models.BooleanField("Activo", default=True)
 
     class Meta:
@@ -102,149 +230,122 @@ class Agente(models.Model):
     def __str__(self):
         return self.nombre
 
+    def clean(self):
+        """Validación personalizada."""
+        if self.activo is None:
+            raise ValidationError("El campo 'activo' no puede estar vacío.")
+
+    @classmethod
+    def activos_disponibles(cls):
+        """Retorna un queryset de agentes activos."""
+        return cls.objects.filter(activo=True)
+
 
 class Cita(models.Model):
-    """Representa una cita migratoria agendada."""
-    ESTADO_PENDIENTE = "pendiente"
-    ESTADO_REALIZADA = "realizada"
-    ESTADO_CANCELADA = "cancelada"
-    ESTADO_EXITOSA = "exitosa"
+    """Representa una cita agendada entre un solicitante y un agente."""
 
-    ESTADOS = (
+    # Estados posibles de una cita
+    ESTADO_PENDIENTE = "pendiente"
+    ESTADO_EXITOSA = "exitosa"
+    ESTADO_CANCELADA = "cancelada"
+    ESTADO_FALLIDA = "fallida"
+
+    ESTADOS_CITA = (
         (ESTADO_PENDIENTE, "Pendiente"),
-        (ESTADO_REALIZADA, "Realizada"),
-        (ESTADO_CANCELADA, "Cancelada"),
         (ESTADO_EXITOSA, "Exitosa"),
+        (ESTADO_CANCELADA, "Cancelada"),
+        (ESTADO_FALLIDA, "Fallida"),
     )
 
     solicitante = models.ForeignKey(
         Solicitante,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="citas"
     )
     agente = models.ForeignKey(
         Agente,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="citas"
     )
     inicio = models.DateTimeField("Inicio")
-    fin = models.DateTimeField("Fin", editable=False)
+    fin = models.DateTimeField("Fin", null=True, blank=True)
     estado = models.CharField(
         "Estado",
         max_length=20,
-        choices=ESTADOS,
+        choices=ESTADOS_CITA,
         default=ESTADO_PENDIENTE
     )
-    creada_en = models.DateTimeField("Creada en", auto_now_add=True)
+    creado_en = models.DateTimeField("Creado en", auto_now_add=True)
 
     class Meta:
         verbose_name = "Cita"
         verbose_name_plural = "Citas"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["agente", "inicio"],
-                name="uniq_agente_inicio"
-            ),
-        ]
-        ordering = ["inicio"]
+        ordering = ["-inicio"]
 
     def __str__(self):
-        return f"{self.solicitante} con {self.agente} @ {self.inicio:%Y-%m-%d %H:%M}"
+        return f"Cita {self.solicitante.nombre} - {self.inicio.strftime('%Y-%m-%d %H:%M')}"
 
     def _calcular_fin(self):
-        """Calcula automáticamente el horario de fin basado en el inicio."""
+        """Calcula la hora de fin basándose en la hora de inicio."""
         return self.inicio + timedelta(hours=DURACION_CITA_HORAS)
 
-    def _validar_horario_atencion(self, inicio_local):
-        """Valida que la cita esté dentro del horario de atención."""
-        if not (HORA_INICIO_ATENCION <= inicio_local.hour < HORA_FIN_ATENCION):
-            raise ValidationError(
-                f"Las citas solo pueden agendarse entre las "
-                f"{HORA_INICIO_ATENCION}:00 y las {HORA_FIN_ATENCION}:00."
-            )
-
-    def _validar_dia_laboral(self, fecha):
-        """Valida que la cita sea en un día laboral (lunes a sábado)."""
-        if fecha.weekday() not in DIAS_LABORALES:
-            raise ValidationError("No se pueden agendar citas los domingos.")
-
-    def _validar_rango_fechas(self, fecha_cita):
-        """Valida que la cita esté dentro del rango permitido (hoy hasta 2 semanas)."""
-        hoy = timezone.localtime(timezone.now()).date()
-        fecha_maxima = hoy + timedelta(weeks=MAXIMO_SEMANAS_ANTICIPACION)
-
-        if fecha_cita < hoy:
-            raise ValidationError("No se pueden agendar citas en fechas pasadas.")
-        if fecha_cita > fecha_maxima:
-            raise ValidationError(
-                f"Solo se pueden agendar citas hasta {MAXIMO_SEMANAS_ANTICIPACION} "
-                f"semanas a partir de hoy."
-            )
-
-    def _validar_cita_pendiente_existente(self):
-        """Valida que el solicitante no tenga otra cita pendiente."""
-        if self.solicitante and self.solicitante.tiene_cita_pendiente():
-            # Si estamos actualizando, excluir la cita actual
-            if self.pk:
-                return
-            raise ValidationError(
-                "El solicitante ya tiene una cita pendiente. "
-                "Debe cancelar la cita existente antes de agendar una nueva."
-            )
-
-    def clean(self):
-        """Ejecuta todas las validaciones de la cita."""
-        if not self.inicio:
-            raise ValidationError("El horario de inicio es obligatorio.")
-
-        inicio_local = timezone.localtime(self.inicio)
-
-        self._validar_horario_atencion(inicio_local)
-        self._validar_dia_laboral(inicio_local.date())
-        self._validar_rango_fechas(inicio_local.date())
-        self._validar_cita_pendiente_existente()
-
     def save(self, *args, **kwargs):
-        """Guarda la cita calculando automáticamente el horario de fin."""
-        self.fin = self._calcular_fin()
-        self.full_clean()
-        return super().save(*args, **kwargs)
+        """Sobrescribe save para calcular automáticamente el fin."""
+        if not self.fin:
+            self.fin = self._calcular_fin()
+        super().save(*args, **kwargs)
 
     def es_fecha_cita_hoy(self) -> bool:
-        """
-        Verifica si la fecha de la cita coincide con la fecha actual.
-
-        Returns:
-            True si la cita es para hoy, False en caso contrario.
-        """
+        """Verifica si la cita es para el día de hoy."""
         hoy = timezone.localtime(timezone.now()).date()
         fecha_cita = timezone.localtime(self.inicio).date()
         return fecha_cita == hoy
 
-    def marcar_como_exitosa(self) -> None:
-        """
-        Marca la cita como exitosa.
+    def marcar_como_exitosa(self):
+        """Marca la cita como exitosa."""
+        self.estado = self.ESTADO_EXITOSA
+        self.save(update_fields=["estado"])
 
-        Raises:
-            ValidationError: Si la cita no está en estado pendiente.
-        """
-        if self.estado != Cita.ESTADO_PENDIENTE:
+    def clean(self):
+        """Validaciones personalizadas de la cita."""
+        if not self.inicio:
+            return
+
+        inicio_local = timezone.localtime(self.inicio)
+        ahora = timezone.localtime(timezone.now())
+
+        # Validar que la cita sea en día laboral
+        if inicio_local.weekday() not in DIAS_LABORALES:
+            raise ValidationError("Las citas solo pueden agendarse en días laborales (lunes a sábado).")
+
+        # Validar que la cita esté dentro del horario de atención
+        if inicio_local.hour < HORA_INICIO_ATENCION or inicio_local.hour >= HORA_FIN_ATENCION:
             raise ValidationError(
-                "Solo se pueden marcar como exitosas las citas pendientes."
+                f"Las citas solo pueden agendarse entre las {HORA_INICIO_ATENCION}:00 "
+                f"y las {HORA_FIN_ATENCION}:00."
             )
-        self.estado = Cita.ESTADO_EXITOSA
-        # Usar super().save() para evitar full_clean() ya que solo actualizamos el estado
-        super(Cita, self).save(update_fields=["estado"])
+
+        # Validar que la cita sea dentro de las próximas semanas permitidas
+        diferencia = (inicio_local.date() - ahora.date()).days
+        if diferencia > (MAXIMO_SEMANAS_ANTICIPACION * 7):
+            raise ValidationError(
+                f"Las citas solo pueden agendarse con máximo "
+                f"{MAXIMO_SEMANAS_ANTICIPACION} semanas de anticipación."
+            )
+
+        # Validar que la cita no sea en el pasado
+        if inicio_local < ahora:
+            raise ValidationError("No se pueden agendar citas en el pasado.")
 
 
 class Requisito(models.Model):
-    """Representa un requisito/documento requerido para un solicitante."""
+    """Representa un requisito asignado a un solicitante."""
     solicitante = models.ForeignKey(
         Solicitante,
         on_delete=models.CASCADE,
         related_name="requisitos"
     )
-    nombre = models.CharField("Nombre", max_length=100)
+    nombre = models.CharField("Nombre", max_length=200)
     estado = models.CharField(
         "Estado",
         max_length=20,
@@ -252,13 +353,13 @@ class Requisito(models.Model):
         default=ESTADO_DOCUMENTO_FALTANTE
     )
     carga_habilitada = models.BooleanField("Carga Habilitada", default=True)
-    observaciones = models.TextField("Observaciones", blank=True)
+    observaciones = models.TextField("Observaciones", blank=True, default="")
     creado_en = models.DateTimeField("Creado en", auto_now_add=True)
 
     class Meta:
         verbose_name = "Requisito"
         verbose_name_plural = "Requisitos"
-        ordering = ["nombre"]
+        ordering = ["solicitante", "nombre"]
         constraints = [
             models.UniqueConstraint(
                 fields=["solicitante", "nombre"],
@@ -267,36 +368,30 @@ class Requisito(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.nombre} - {self.estado}"
+        return f"{self.solicitante.nombre} - {self.nombre}"
 
     def obtener_ultima_version(self) -> int:
         """
         Obtiene el número de la última versión del documento.
 
         Returns:
-            Número de la última versión o 0 si no hay documentos.
+            Número de la última versión, o 0 si no hay documentos.
         """
-        ultimo_doc = self.documentos.order_by("-version").first()
-        return ultimo_doc.version if ultimo_doc else 0
+        ultimo = self.documentos.order_by("-version").first()
+        return ultimo.version if ultimo else 0
 
     def obtener_documento_actual(self):
         """
-        Obtiene el documento con la versión más reciente.
+        Obtiene el documento con la versión más alta.
 
         Returns:
-            Instancia de Documento o None si no hay documentos.
+            Documento con la versión más alta, o None si no hay documentos.
         """
         return self.documentos.order_by("-version").first()
 
     def puede_subir_nuevo_documento(self) -> bool:
         """
         Verifica si se puede subir un nuevo documento.
-
-        Reglas:
-        - Si no hay documentos, se puede subir.
-        - Si el último documento está pendiente, NO se puede subir.
-        - Si el último documento fue rechazado (faltante), se puede subir.
-        - Si el último documento fue revisado, NO se puede subir nueva versión.
 
         Returns:
             True si se puede subir un nuevo documento.
@@ -469,4 +564,3 @@ class Carpeta(models.Model):
         if not documentos.exists():
             return False
         return all(doc.estado == ESTADO_DOCUMENTO_REVISADO for doc in documentos)
-

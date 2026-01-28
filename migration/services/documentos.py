@@ -16,11 +16,11 @@ from migration.models import (
     Requisito,
     Documento,
     Carpeta,
+    TipoVisa,
     ESTADO_DOCUMENTO_PENDIENTE,
     ESTADO_DOCUMENTO_FALTANTE,
     ESTADO_DOCUMENTO_REVISADO,
     ESTADOS_DOCUMENTO,
-    TIPOS_VISA,
 )
 
 
@@ -53,9 +53,9 @@ def obtener_tipos_visa_soportados() -> list[str]:
     Obtiene la lista de tipos de visa soportados.
 
     Returns:
-        Lista de tipos de visa.
+        Lista de códigos de tipos de visa activos.
     """
-    return [visa[0] for visa in TIPOS_VISA]
+    return TipoVisa.obtener_tipos_activos()
 
 
 def crear_estructura_carpetas(
@@ -413,4 +413,3 @@ def puede_subir_nueva_version(requisito: Requisito) -> tuple[bool, str]:
         return True, "La versión anterior fue rechazada."
 
     return False, "Estado desconocido."
-
