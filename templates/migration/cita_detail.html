@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Gestionar Cita | {{ cita.solicitante.nombre }}{% endblock %}
+
+{% block content %}
+    {% include "partials/navbar.html" %}
+
+    <div class="flex h-[calc(100vh-65px)] overflow-hidden">
+        
+        {% include "partials/sidebar.html" %}
+
+        <main class="flex-1 overflow-y-auto p-8 bg-background-light dark:bg-background-dark/50">
+            <div class="max-w-6xl mx-auto space-y-6">
+                
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-3">
+                        <a href="{% url 'dashboard' %}" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 transition-colors">
+                            <span class="material-symbols-outlined">arrow_back</span>
+                        </a>
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Asignación de Documentos</h1>
+                            <p class="text-slate-500 text-sm">Configure los requisitos para la solicitud de <strong>{{ cita.solicitante.nombre }}</strong>.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-background-dark border border-emerald-200 dark:border-emerald-900/30 rounded-xl p-6 shadow-sm relative overflow-hidden">
+                    <div class="absolute -top-6 -right-6 p-4 opacity-[0.03] dark:opacity-[0.05] pointer-events-none">
+                        <span class="material-symbols-outlined text-9xl text-emerald-600">verified</span>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold shadow-inner">
+                                {{ cita.solicitante.nombre|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-slate-900 dark:text-white">{{ cita.solicitante.nombre }}</h2>
+                                <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500 mt-1">
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-sm">badge</span> 
+                                        ID: #{{ cita.solicitante.id }}
+                                    </span>
+                                    <span class="hidden md:inline text-slate-300">|</span>
+                                    <span class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-sm">calendar_today</span> 
+                                        {{ cita.inicio|date:"d M, Y" }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 md:border-l md:border-slate-100 md:dark:border-slate-800 md:pl-6">
+                            <div class="text-right">
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 shadow-sm shadow-emerald-200 dark:shadow-none">
+                                    <span class="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    {{ cita.get_estado_display }}
+                                </span>
+                                <p class="text-xs text-slate-400 mt-2 font-medium">Asignada a: {{ cita.agente.nombre }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-8">
+                    
+                    <div class="col-span-12 lg:col-span-7 space-y-6">
+                        
+                        <div class="bg-white dark:bg-background-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300">Tipo de Trámite / Visa</label>
+                                <div id="tramite-status" class="text-xs transition-all duration-500"></div>
+                            </div>
+                            
+                            <div class="relative">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">category</span>
+                                
+                                <select 
+                                    name="tipo_tramite"
+                                    class="w-full pl-10 pr-4 py-3 rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow cursor-pointer"
+                                    
+                                    hx-post="{% url 'actualizar_tramite' cita.id %}" 
+                                    hx-trigger="change"
+                                    hx-target="#tramite-status"
+                                    hx-swap="innerHTML"
+                                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                    >
+                                    
+                                    <option value="" disabled {% if not cita.solicitante.tipo_visa %}selected{% endif %}>-- Seleccione un trámite --</option>
+                                    <option value="estudiantil" {% if cita.solicitante.tipo_visa == 'estudiantil' %}selected{% endif %}>Visa Estudiantil</option>
+                                    <option value="trabajo" {% if cita.solicitante.tipo_visa == 'trabajo' %}selected{% endif %}>Visa de Trabajo</option>
+                                    <option value="residencial" {% if cita.solicitante.tipo_visa == 'residencial' %}selected{% endif %}>Visa Residencial</option>
+                                    <option value="turista" {% if cita.solicitante.tipo_visa == 'turista' %}selected{% endif %}>Visa de Turista</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-background-dark p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex-1">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Buscar Documentos</h3>
+                                <button class="text-xs text-primary font-bold hover:underline">Ver todo el catálogo</button>
+                            </div>
+                            
+                            <div class="relative mb-6">
+                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                                
+                                <input 
+                                    id="buscador-input"
+                                    type="text" 
+                                    name="q"
+                                    class="w-full pl-10 pr-4 py-3 rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow placeholder:text-slate-400"
+                                    placeholder="Escriba el nombre del documento..." 
+                                    
+                                    hx-get="{% url 'buscar_documentos' cita.id %}"
+                                    hx-trigger="keyup changed delay:300ms, load" 
+                                    hx-target="#resultados-busqueda"
+                                />
+                            </div>
+
+                            <div class="space-y-3">
+                                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Sugerencias Comunes</p>
+                                
+                                <div id="resultados-busqueda" class="max-h-[300px] overflow-y-auto pr-2">
+                                    <div class="animate-pulse flex space-x-4 p-4">
+                                        <div class="flex-1 space-y-4 py-1">
+                                            <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                                            <div class="h-4 bg-slate-200 rounded"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-12 lg:col-span-5">
+                        <div class="bg-white dark:bg-background-dark rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-200/50 dark:shadow-none flex flex-col h-full sticky top-4">
+                            
+                            <div class="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 rounded-t-xl">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary">playlist_add_check</span>
+                                        Documentos Requeridos
+                                    </h3>
+                                    <span class="bg-primary text-white text-xs font-bold px-2.5 py-1 rounded-md shadow-sm shadow-primary/20">
+                                        {{ cita.solicitante.requisitos.count }} Items
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div id="lista-requisitos-derecha" class="p-0 flex-1 overflow-y-auto max-h-[400px]">
+                                {% if cita.solicitante.requisitos.all %}
+                                    <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {% for req in cita.solicitante.requisitos.all %}
+                                        <li class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                            
+                                            <div class="flex items-center gap-3">
+                                                <div class="bg-slate-100 dark:bg-slate-700 text-slate-500 p-2 rounded-lg">
+                                                    <span class="material-symbols-outlined text-sm">description</span>
+                                                </div>
+                                                <div>
+                                                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                        {{ req.nombre|title }}
+                                                    </p>
+                                                    <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded 
+                                                        {% if req.estado == 'faltante' %}bg-rose-100 text-rose-600
+                                                        {% elif req.estado == 'pendiente' %}bg-amber-100 text-amber-600
+                                                        {% else %}bg-emerald-100 text-emerald-600{% endif %}">
+                                                        {{ req.get_estado_display }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                            
+                                            <button 
+                                                hx-post="{% url 'eliminar_requisito' req.id %}"
+                                                hx-target="#lista-requisitos-derecha"
+                                                hx-confirm="¿Estás seguro de quitar este requisito?"
+                                                class="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"
+                                                title="Eliminar requisito">
+                                                <span class="material-symbols-outlined text-lg">delete</span>
+                                            </button>
+                            
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <div class="p-10 text-center text-slate-400">
+                                        <p class="text-sm italic">Seleccione un tipo de visa para generar los requisitos.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 rounded-b-xl space-y-3">
+                                <button class="w-full py-3.5 bg-primary hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2" onclick="document.getElementById('confirmation-modal').classList.remove('hidden')">
+                                    <span>Enviar Solicitud</span>
+                                    <span class="material-symbols-outlined text-sm">send</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" id="confirmation-modal">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="document.getElementById('confirmation-modal').classList.add('hidden')"></div>
+        
+        <div class="relative bg-white dark:bg-background-dark w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-8 transform scale-100 transition-transform">
+            
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span class="material-symbols-outlined text-3xl">mark_email_unread</span>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Confirmar Envío</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">
+                    Se habilitará la carpeta para <span class="font-bold text-slate-800 dark:text-slate-300">{{ cita.solicitante.nombre }}</span> y se le enviará una notificación.
+                </p>
+            </div>
+    
+            <form action="{% url 'enviar_solicitud' cita.id %}" method="POST" class="flex flex-col gap-3">
+                {% csrf_token %}
+                
+                <button type="submit"
+                    class="w-full py-3 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                    <span>Confirmar y Enviar</span>
+                    </button>
+                
+                <button type="button"
+                    class="w-full py-3 text-slate-500 font-bold hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                    onclick="document.getElementById('confirmation-modal').classList.add('hidden')">
+                    Cancelar
+                </button>
+            </form>
+    
+        </div>
+    </div>
+{% endblock %}

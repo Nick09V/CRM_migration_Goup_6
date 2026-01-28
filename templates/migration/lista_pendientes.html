@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Bandeja de Entrada | Documentos{% endblock %}
+
+{% block content %}
+{% include "partials/navbar.html" %}
+
+<div class="flex h-[calc(100vh-65px)] overflow-hidden">
+    {% include "partials/sidebar.html" %}
+
+    <main class="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-background-dark/50">
+        <div class="max-w-6xl mx-auto space-y-6">
+
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Documentos Pendientes</h1>
+                    <p class="text-slate-500 text-sm">Bandeja de entrada de archivos por revisar.</p>
+                </div>
+                <div class="bg-white px-4 py-2 rounded-lg border shadow-sm">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Total Casos</span>
+                    <p class="text-xl font-bold text-primary">{{ clientes.count }}</p>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                {% if clientes %}
+                    <ul class="divide-y divide-slate-100 dark:divide-slate-700">
+                        {% for cliente in clientes %}
+                        <li class="p-6 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                            <div class="flex items-center justify-between">
+                                
+                                <div class="flex items-center gap-4">
+                                    <div class="size-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+                                        {{ cliente.nombre|slice:":2"|upper }}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-slate-900 dark:text-white">{{ cliente.nombre }}</h3>
+                                        <div class="flex items-center gap-3 text-sm text-slate-500">
+                                            <span class="flex items-center gap-1">
+                                                <span class="material-symbols-outlined text-sm">badge</span>
+                                                Visa {{ cliente.tipo_visa|title }}
+                                            </span>
+                                            <span>•</span>
+                                            <span class="text-amber-600 font-bold">
+                                                {{ cliente.requisitos.all|length }} documentos en total
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <a href="{% url 'revision_documentos' cliente.id %}" 
+                                   class="px-5 py-2.5 bg-primary hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg shadow-primary/20 flex items-center gap-2 transition-transform active:scale-95">
+                                    <span>Revisar Carpeta</span>
+                                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                                </a>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="p-16 text-center">
+                        <div class="bg-slate-50 size-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="material-symbols-outlined text-4xl text-slate-300">inbox</span>
+                        </div>
+                        <h3 class="text-slate-900 font-bold text-lg">¡Todo limpio!</h3>
+                        <p class="text-slate-500">No hay documentos pendientes de revisión en este momento.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </main>
+</div>
+{% endblock %}
