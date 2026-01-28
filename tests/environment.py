@@ -1,6 +1,3 @@
-"""
-Configuración del entorno para las pruebas BDD con Behave.
-"""
 import os
 import sys
 import django
@@ -15,10 +12,6 @@ django.setup()
 
 
 def before_scenario(context, scenario):
-    """
-    Se ejecuta antes de cada escenario.
-    Limpia la base de datos para garantizar pruebas aisladas.
-    """
     from migration.models import Cita, Solicitante, Agente, Requisito, Documento, Carpeta
 
     # Limpiar datos de pruebas anteriores (orden importa por las FK)
@@ -31,10 +24,6 @@ def before_scenario(context, scenario):
 
 
 def after_scenario(context, scenario):
-    """
-    Se ejecuta después de cada escenario.
-    Limpia archivos físicos creados durante las pruebas.
-    """
     from migration.services.documentos import limpiar_carpeta_documentos
 
     # Limpiar carpeta de documentos después de cada escenario
@@ -43,10 +32,6 @@ def after_scenario(context, scenario):
 
 
 def after_feature(context, feature):
-    """
-    Se ejecuta después de cada feature.
-    Limpia archivos físicos para asegurar que no queden residuos.
-    """
     from migration.services.documentos import limpiar_carpeta_documentos
 
     # Limpiar carpeta de documentos al finalizar features de documentos

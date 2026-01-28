@@ -381,23 +381,11 @@ class Cita(models.Model):
         return super().save(*args, **kwargs)
 
     def es_fecha_cita_hoy(self) -> bool:
-        """
-        Verifica si la fecha de la cita coincide con la fecha actual.
-
-        Returns:
-            True si la cita es para hoy, False en caso contrario.
-        """
         hoy = timezone.localtime(timezone.now()).date()
         fecha_cita = timezone.localtime(self.inicio).date()
         return fecha_cita == hoy
 
     def marcar_como_exitosa(self) -> None:
-        """
-        Marca la cita como exitosa.
-
-        Raises:
-            ValidationError: Si la cita no está en estado pendiente.
-        """
         if self.estado != Cita.ESTADO_PENDIENTE:
             raise ValidationError(
                 "Solo se pueden marcar como exitosas las citas pendientes."
@@ -440,37 +428,13 @@ class Requisito(models.Model):
         return f"{self.nombre} - {self.estado}"
 
     def obtener_ultima_version(self) -> int:
-        """
-        Obtiene el número de la última versión del documento.
-
-        Returns:
-            Número de la última versión o 0 si no hay documentos.
-        """
         ultimo_doc = self.documentos.order_by("-version").first()
         return ultimo_doc.version if ultimo_doc else 0
 
     def obtener_documento_actual(self):
-        """
-        Obtiene el documento con la versión más reciente.
-
-        Returns:
-            Instancia de Documento o None si no hay documentos.
-        """
         return self.documentos.order_by("-version").first()
 
     def puede_subir_nuevo_documento(self) -> bool:
-        """
-        Verifica si se puede subir un nuevo documento.
-
-        Reglas:
-        - Si no hay documentos, se puede subir.
-        - Si el último documento está pendiente, NO se puede subir.
-        - Si el último documento fue rechazado (faltante), se puede subir.
-        - Si el último documento fue revisado, NO se puede subir nueva versión.
-
-        Returns:
-            True si se puede subir un nuevo documento.
-        """
         if not self.carga_habilitada:
             return False
 
@@ -599,24 +563,11 @@ class Carpeta(models.Model):
         return f"Carpeta {self.solicitante.cedula} - {self.estado}"
 
     def obtener_ruta_base(self) -> str:
-        """
-        Obtiene la ruta base de la carpeta del solicitante.
-        Estructura: Documentos/CI_solicitante/tipoVisa/
-
-        Returns:
-            Ruta base de la carpeta.
-        """
         cedula = self.solicitante.cedula or "SIN_CEDULA"
         tipo_visa = self.solicitante.tipo_visa or "SIN_VISA"
         return f"Documentos/{cedula}/{tipo_visa}"
 
     def obtener_documentos_pendientes(self):
-        """
-        Obtiene todos los documentos pendientes de revisión del solicitante.
-
-        Returns:
-            QuerySet de documentos pendientes.
-        """
         return Documento.objects.filter(
             requisito__solicitante=self.solicitante,
             estado=ESTADO_DOCUMENTO_PENDIENTE
@@ -627,12 +578,6 @@ class Carpeta(models.Model):
         return self.obtener_documentos_pendientes().exists()
 
     def todos_documentos_revisados(self) -> bool:
-        """
-        Verifica si todos los documentos han sido revisados.
-
-        Returns:
-            True si todos los documentos están revisados.
-        """
         documentos = Documento.objects.filter(
             requisito__solicitante=self.solicitante
         )

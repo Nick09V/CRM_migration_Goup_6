@@ -1,7 +1,3 @@
-"""
-Servicio de administración del sistema.
-Gestiona la lógica de negocio para funcionalidades exclusivas del administrador.
-"""
 from __future__ import annotations
 from dataclasses import dataclass
 
@@ -26,15 +22,6 @@ class ResultadoOperacion:
 # ==================== Gestión de Agentes ====================
 
 def activar_agente(agente: Agente) -> ResultadoOperacion:
-    """
-    Activa un agente en el sistema.
-
-    Args:
-        agente: El agente a activar.
-
-    Returns:
-        ResultadoOperacion con el estado de la operación.
-    """
     if agente.activo:
         return ResultadoOperacion(
             exitoso=False,
@@ -58,16 +45,6 @@ def activar_agente(agente: Agente) -> ResultadoOperacion:
 
 
 def desactivar_agente(agente: Agente) -> ResultadoOperacion:
-    """
-    Desactiva un agente en el sistema.
-    El agente no podrá iniciar sesión ni ser asignado a nuevas carpetas.
-
-    Args:
-        agente: El agente a desactivar.
-
-    Returns:
-        ResultadoOperacion con el estado de la operación.
-    """
     if not agente.activo:
         return ResultadoOperacion(
             exitoso=False,
@@ -91,15 +68,6 @@ def desactivar_agente(agente: Agente) -> ResultadoOperacion:
 
 
 def cambiar_estado_agente(agente: Agente) -> ResultadoOperacion:
-    """
-    Cambia el estado de un agente (activo <-> inactivo).
-
-    Args:
-        agente: El agente cuyo estado se cambiará.
-
-    Returns:
-        ResultadoOperacion con el estado de la operación.
-    """
     if agente.activo:
         return desactivar_agente(agente)
     else:
@@ -123,20 +91,6 @@ def crear_tipo_visa(
     nombre: str,
     descripcion: str = ""
 ) -> ResultadoOperacion:
-    """
-    Crea un nuevo tipo de visa en el sistema.
-
-    Args:
-        codigo: Identificador único del tipo de visa.
-        nombre: Nombre descriptivo del tipo de visa.
-        descripcion: Descripción opcional del tipo de visa.
-
-    Returns:
-        ResultadoOperacion con el estado de la operación.
-
-    Raises:
-        ValidationError: Si el código o nombre ya existen.
-    """
     # Normalizar el código a minúsculas sin espacios
     codigo = codigo.lower().strip().replace(" ", "_")
     nombre = nombre.strip()
@@ -174,10 +128,6 @@ def obtener_tipos_visa_activos():
 
 
 def obtener_tipos_visa_choices():
-    """
-    Obtiene los tipos de visa activos como una lista de tuplas (codigo, nombre)
-    para usar en formularios como choices.
-    """
     return list(TipoVisa.objects.filter(activo=True).values_list('codigo', 'nombre'))
 
 
@@ -197,19 +147,6 @@ def crear_requisito_catalogo(
     nombre: str,
     descripcion: str = ""
 ) -> ResultadoOperacion:
-    """
-    Crea un nuevo requisito en el catálogo del sistema.
-
-    Args:
-        nombre: Nombre del requisito.
-        descripcion: Descripción opcional del requisito.
-
-    Returns:
-        ResultadoOperacion con el estado de la operación.
-
-    Raises:
-        ValidationError: Si el nombre ya existe.
-    """
     nombre = nombre.strip().lower()
 
     if not nombre:

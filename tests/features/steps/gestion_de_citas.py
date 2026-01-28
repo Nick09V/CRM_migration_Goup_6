@@ -1,7 +1,4 @@
-"""
-Steps para la característica de Gestión de citas migratorias.
-Unifica los pasos BDD para agendamiento, reprogramación y cancelación.
-"""
+
 from behave import given, step
 from django.utils import timezone as dj_timezone
 from django.core.exceptions import ValidationError as DjValidationError
@@ -24,13 +21,7 @@ from faker import Faker
 faker = Faker("es_ES")
 
 
-# ==================== Funciones auxiliares ====================
-
 def obtener_proximo_dia_laboral():
-    """
-    Obtiene el próximo día laboral (lunes a sábado) a partir de mañana.
-    Evita usar el día actual para evitar problemas con fechas pasadas.
-    """
     fecha = dj_timezone.localtime(dj_timezone.now()).date() + timedelta(days=1)
 
     # Si cae domingo, avanzar al lunes
@@ -41,15 +32,6 @@ def obtener_proximo_dia_laboral():
 
 
 def obtener_dia_laboral_con_anticipacion(dias_anticipacion: int):
-    """
-    Obtiene un día laboral con la anticipación especificada.
-
-    Args:
-        dias_anticipacion: Número de días desde hoy.
-
-    Returns:
-        Fecha del día laboral.
-    """
     fecha = dj_timezone.localtime(dj_timezone.now()).date() + timedelta(days=dias_anticipacion)
 
     # Si cae domingo, avanzar al lunes
@@ -60,43 +42,18 @@ def obtener_dia_laboral_con_anticipacion(dias_anticipacion: int):
 
 
 def crear_horario_valido(hora=9):
-    """
-    Crea un horario válido para agendar citas.
-
-    Args:
-        hora: Hora del día (entre 8 y 11).
-
-    Returns:
-        DateTime con zona horaria para el próximo día laboral.
-    """
     fecha_laboral = obtener_proximo_dia_laboral()
     horario_naive = dj_timezone.datetime.combine(fecha_laboral, time(hora, 0))
     return dj_timezone.make_aware(horario_naive)
 
 
 def crear_horario_con_anticipacion(dias_anticipacion: int, hora: int = 9):
-    """
-    Crea un horario válido para una cita con anticipación específica.
-
-    Args:
-        dias_anticipacion: Número de días desde hoy.
-        hora: Hora del día (entre 8 y 11).
-
-    Returns:
-        DateTime con zona horaria.
-    """
     fecha_laboral = obtener_dia_laboral_con_anticipacion(dias_anticipacion)
     horario_naive = dj_timezone.datetime.combine(fecha_laboral, time(hora, 0))
     return dj_timezone.make_aware(horario_naive)
 
 
 def crear_solicitante():
-    """
-    Crea un nuevo solicitante con datos aleatorios.
-
-    Returns:
-        Instancia de Solicitante guardada en la base de datos.
-    """
     return Solicitante.objects.create(
         nombre=faker.name(),
         telefono=faker.phone_number(),
@@ -105,12 +62,6 @@ def crear_solicitante():
 
 
 def obtener_o_crear_agentes():
-    """
-    Asegura que existan agentes activos en el sistema.
-
-    Returns:
-        QuerySet de agentes activos.
-    """
     # Crear usuario y agente A
     user_a, _ = User.objects.get_or_create(
         username="agente_a",
@@ -135,12 +86,6 @@ def obtener_o_crear_agentes():
 
 
 def obtener_o_crear_agente():
-    """
-    Asegura que exista un agente activo en el sistema.
-
-    Returns:
-        Instancia de Agente.
-    """
     agente, _ = Agente.objects.get_or_create(
         nombre="Agente Reprogramaciones",
         defaults={"activo": True}
@@ -149,16 +94,6 @@ def obtener_o_crear_agente():
 
 
 def crear_cita_pendiente(dias_anticipacion: int, hora: int = 9):
-    """
-    Crea una cita pendiente con la anticipación especificada.
-
-    Args:
-        dias_anticipacion: Número de días desde hoy para la cita.
-        hora: Hora del día para la cita.
-
-    Returns:
-        Instancia de Cita pendiente.
-    """
     solicitante = crear_solicitante()
     agente = obtener_o_crear_agente()
     horario = crear_horario_con_anticipacion(dias_anticipacion, hora)

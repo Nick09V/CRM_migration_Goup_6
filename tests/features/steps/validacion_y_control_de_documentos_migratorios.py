@@ -1,8 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Steps para la característica de Validación y control de documentos migratorios.
-Implementa los pasos BDD para los escenarios de aprobación y rechazo de documentos.
-"""
+
 from behave import given, when, then
 from django.core.exceptions import ValidationError as DjValidationError
 
@@ -31,12 +27,6 @@ faker = Faker("es_ES")
 
 
 def crear_solicitante_con_datos() -> Solicitante:
-    """
-    Crea un nuevo solicitante con datos aleatorios.
-
-    Returns:
-        Instancia de Solicitante guardada en la base de datos.
-    """
     return Solicitante.objects.create(
         nombre=faker.unique.name(),
         cedula=faker.unique.numerify(text="##########"),
@@ -47,12 +37,6 @@ def crear_solicitante_con_datos() -> Solicitante:
 
 
 def obtener_o_crear_agente() -> Agente:
-    """
-    Asegura que exista un agente activo en el sistema.
-
-    Returns:
-        Instancia de Agente activo.
-    """
     agente, _ = Agente.objects.get_or_create(
         nombre="Agente Revision",
         defaults={"activo": True}
@@ -64,16 +48,6 @@ def crear_documento_pendiente(
     solicitante: Solicitante,
     nombre_requisito: str = "DocumentoPrueba"
 ) -> Documento:
-    """
-    Crea un documento pendiente de revisión para un solicitante.
-
-    Args:
-        solicitante: El solicitante propietario del documento.
-        nombre_requisito: Nombre del requisito.
-
-    Returns:
-        Instancia de Documento en estado pendiente.
-    """
     # Crear requisito
     requisito = obtener_o_crear_requisito(
         solicitante=solicitante,

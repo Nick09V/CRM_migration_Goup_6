@@ -1,8 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Steps para la característica de Gestión del estado de carpetas migratorias.
-Implementa los pasos BDD para los escenarios de aprobación y cierre de carpetas.
-"""
+
 import os
 import sys
 import django

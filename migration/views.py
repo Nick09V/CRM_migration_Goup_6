@@ -1,7 +1,3 @@
-"""
-Vistas Django para la aplicación de migración.
-Consume los servicios de dominio existentes en migration/services/.
-"""
 import mimetypes
 from pathlib import Path
 
