@@ -1,7 +1,7 @@
 # Created by nickv at 24/1/2026
 # language: es
 Característica: Validación y control de documentos migratorios
-  Como agencia migratoria
+  Como agente de migración
   Quiero validar los documentos de los solicitantes y gestionar observaciones
   Para reducir rechazos y reprocesos en trámites migratorios
 
