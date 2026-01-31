@@ -1,9 +1,9 @@
 # Created by nickv at 27/1/2026
 # language: es
 Característica: Gestión del estado de carpetas migratorias
-  Para controlar el resultado final de los trámites migratorios
-  Como agencia migratoria
+  Como agente de migración
   Quiero administrar el estado de las carpetas según el avance y resultado del proceso
+  Para controlar el resultado final de los trámites migratorios
 
 
   Escenario: Carpeta aprobada cuando todos los documentos están validados

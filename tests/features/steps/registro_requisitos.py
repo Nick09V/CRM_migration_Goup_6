@@ -131,7 +131,7 @@ def paso_asignar_requisitos(context, requisitos: str):
     # Parsear los requisitos esperados
     requisitos_esperados = parsear_lista_requisitos(requisitos)
 
-    # Obtener requisitos cargados (si existen)
+    # Obtener requisitos cargados
     requisitos_cargados = getattr(context, 'requisitos_cargados', None)
 
     try:

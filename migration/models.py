@@ -80,10 +80,6 @@ ESTADOS_CARPETA = (
 
 
 class CatalogoRequisito(models.Model):
-    """
-    Catálogo de requisitos disponibles en el sistema.
-    El agente puede seleccionar de este catálogo los requisitos a asignar a cada solicitante.
-    """
     nombre = models.CharField("Nombre", max_length=100, unique=True)
     descripcion = models.TextField("Descripción", blank=True)
     activo = models.BooleanField("Activo", default=True)
@@ -104,10 +100,6 @@ class CatalogoRequisito(models.Model):
 
     @classmethod
     def inicializar_catalogo(cls):
-        """
-        Inicializa el catálogo con requisitos básicos si está vacío.
-        Útil para migración inicial o setup del sistema.
-        """
         requisitos_basicos = [
             ("ci", "Cédula de identidad o documento de identificación"),
             ("carta aceptación", "Carta de aceptación de institución educativa"),
@@ -160,14 +152,10 @@ class TipoVisa(models.Model):
 
     @classmethod
     def obtener_tipos_activos(cls):
-        """Obtiene todos los tipos de visa activos."""
         return cls.objects.filter(activo=True)
 
     @classmethod
     def inicializar_tipos_default(cls):
-        """
-        Inicializa los tipos de visa por defecto si no existen.
-        """
         tipos_default = [
             ("estudiantil", "Estudiantil", "Visa para estudios académicos"),
             ("trabajo", "Trabajo", "Visa para empleo y trabajo"),
@@ -182,7 +170,6 @@ class TipoVisa(models.Model):
 
 
 class Solicitante(models.Model):
-    """Representa a una persona que solicita citas migratorias."""
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='solicitante', null=True, blank=True)
     nombre = models.CharField("Nombre", max_length=120, unique=True)
     cedula = models.CharField("Cédula", max_length=20, blank=True)
@@ -220,7 +207,6 @@ class Solicitante(models.Model):
 
 
 class Agente(models.Model):
-    """Representa a un agente que atiende citas migratorias."""
     usuario = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -262,7 +248,6 @@ class Agente(models.Model):
 
 
 class Cita(models.Model):
-    """Representa una cita migratoria agendada."""
     ESTADO_PENDIENTE = "pendiente"
     ESTADO_REALIZADA = "realizada"
     ESTADO_CANCELADA = "cancelada"

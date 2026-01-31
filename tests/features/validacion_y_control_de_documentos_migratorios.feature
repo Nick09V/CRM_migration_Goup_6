@@ -1,9 +1,9 @@
 # Created by nickv at 24/1/2026
 # language: es
 Característica: Validación y control de documentos migratorios
-  Para reducir rechazos y reprocesos en trámites migratorios
   Como agencia migratoria
   Quiero validar los documentos de los solicitantes y gestionar observaciones
+  Para reducir rechazos y reprocesos en trámites migratorios
 
   Antecedentes:
     Dado que existe un documento pendiente por revisar

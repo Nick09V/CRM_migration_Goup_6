@@ -6,7 +6,7 @@
 Característica: Registro de requisitos migratorios
   Como agente de migración
   Quiero asignar los requisitos del solicitante
-  Para monitorear su proceso migratorio
+  Para monitorear de forma eficiente su proceso migratorio
 
 
   Esquema del escenario: Registro de requisitos migratorios según tipo de visa
