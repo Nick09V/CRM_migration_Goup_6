@@ -1,0 +1,62 @@
+﻿{% extends 'base.html' %}
+{% block title %}Crear Requisito - CRM Migracion{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Requisito
+    </h1>
+    <span class="badge bg-danger">Administrador</span>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-card-checklist me-2"></i>Nuevo Requisito
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_nombre" class="form-label">{{ form.nombre.label }}</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <div class="text-danger small">{{ form.nombre.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_descripcion" class="form-label">{{ form.descripcion.label }}</label>
+                        {{ form.descripcion }}
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:admin_dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check-lg me-1"></i> Crear Requisito
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Informacion
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    Los requisitos son documentos que los solicitantes deben presentar.
+                </p>
+                <h6>Ejemplos de Requisitos</h6>
+                <ul class="small">
+                    <li>Certificado medico</li>
+                    <li>Extracto bancario</li>
+                    <li>Carta de invitacion</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

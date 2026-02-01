@@ -145,6 +145,10 @@ STATIC_URL = 'static/'
 
 STATICFILES_DIRS = [ BASE_DIR / 'static' ,]
 
+# Media files (uploaded documents)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'Documentos'
+
 # behave-django settings
 BEHAVE = {
     'paths': [str(BASE_DIR / 'tests' / 'features')],

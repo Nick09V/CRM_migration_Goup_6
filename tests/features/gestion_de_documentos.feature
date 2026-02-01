@@ -2,7 +2,7 @@
 
 @ready
 @documentos
-Característica: repositorio de documentos autoorganizado
+Característica: Gestión de documentos
   Como agente de migración
   Quiero que los documentos de los solicitantes se suban en un repositorio digital
   Para facilitar el seguimiento de los documentos

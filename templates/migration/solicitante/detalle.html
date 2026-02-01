@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ solicitante.nombre }} - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-person-circle me-2"></i>{{ solicitante.nombre }}
+    </h1>
+    <div>
+        <a href="{% url 'migration:solicitante_editar' pk=solicitante.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil me-1"></i> Editar
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Columna izquierda: Información y Estado -->
+    <div class="col-lg-4">
+        <!-- Información del Solicitante -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-person-lines-fill me-2"></i>Información Personal
+            </div>
+            <div class="card-body">
+                <p><strong>Cédula:</strong> {{ solicitante.cedula|default:"No registrada" }}</p>
+                <p><strong>Email:</strong> {{ solicitante.email|default:"No registrado" }}</p>
+                <p><strong>Teléfono:</strong> {{ solicitante.telefono|default:"No registrado" }}</p>
+                <p>
+                    <strong>Tipo de Visa:</strong>
+                    {% if solicitante.tipo_visa %}
+                        <span class="badge bg-info">{{ solicitante.get_tipo_visa_display }}</span>
+                    {% else %}
+                        <span class="text-muted">Sin asignar</span>
+                        <a href="{% url 'migration:asignar_tipo_visa' solicitante_pk=solicitante.pk %}" class="btn btn-sm btn-outline-primary ms-2">
+                            <i class="bi bi-plus"></i> Asignar
+                        </a>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Estado de la Carpeta -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-folder me-2"></i>Estado de Carpeta
+            </div>
+            <div class="card-body">
+                {% if carpeta %}
+                    <div class="text-center mb-3">
+                        <span class="badge status-badge status-{{ carpeta.estado }}" style="font-size: 1rem;">
+                            {{ carpeta.get_estado_display }}
+                        </span>
+                    </div>
+
+                    {% if carpeta.observaciones %}
+                    <div class="alert alert-warning small">
+                        <strong>Observaciones:</strong> {{ carpeta.observaciones }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Progreso de documentos -->
+                    <p class="mb-1"><strong>Progreso de documentos:</strong></p>
+                    <div class="progress progress-custom mb-2">
+                        <div class="progress-bar {% if progreso_documentos == 100 %}bg-success{% else %}bg-primary{% endif %}"
+                             role="progressbar"
+                             style="width: {{ progreso_documentos }}%">
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ progreso_documentos }}% completado</small>
+                {% else %}
+                    <div class="text-center text-muted">
+                        <i class="bi bi-folder-x" style="font-size: 2rem;"></i>
+                        <p class="mt-2">Carpeta no iniciada</p>
+                        <small>La carpeta se crea al asignar requisitos</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna central: Citas -->
+    <div class="col-lg-4">
+        <!-- Cita Pendiente -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-calendar-event me-2"></i>Cita Actual
+            </div>
+            <div class="card-body">
+                {% if cita_pendiente %}
+                    <div class="alert alert-info mb-3">
+                        <h6 class="alert-heading"><i class="bi bi-clock me-2"></i>Cita Programada</h6>
+                        <p class="mb-1"><strong>Fecha:</strong> {{ cita_pendiente.inicio|date:"l, d F Y" }}</p>
+                        <p class="mb-1"><strong>Hora:</strong> {{ cita_pendiente.inicio|time:"H:i" }} - {{ cita_pendiente.fin|time:"H:i" }}</p>
+                        <p class="mb-0"><strong>Agente:</strong> {{ cita_pendiente.agente.nombre }}</p>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'migration:reprogramar_cita' cita_pk=cita_pendiente.pk %}" class="btn btn-outline-warning">
+                            <i class="bi bi-calendar2-range me-1"></i> Reprogramar
+                        </a>
+                        <a href="{% url 'migration:cancelar_cita' cita_pk=cita_pendiente.pk %}" class="btn btn-outline-danger">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center">
+                        <i class="bi bi-calendar-x" style="font-size: 2rem; color: #ccc;"></i>
+                        <p class="text-muted mt-2">Sin cita pendiente</p>
+                        <a href="{% url 'migration:agendar_cita' solicitante_pk=solicitante.pk %}" class="btn btn-primary">
+                            <i class="bi bi-calendar-plus me-1"></i> Agendar Cita
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Historial de Citas -->
+        {% if historial_citas %}
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-2"></i>Historial de Citas
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for cita in historial_citas %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <small>{{ cita.inicio|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    <span class="badge {% if cita.estado == 'exitosa' %}bg-success{% elif cita.estado == 'cancelada' %}bg-secondary{% else %}bg-info{% endif %}">
+                        {{ cita.get_estado_display }}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Columna derecha: Requisitos y Documentos -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-check me-2"></i>Requisitos y Documentos</span>
+                {% if not solicitante.tipo_visa %}
+                <a href="{% url 'migration:asignar_tipo_visa' solicitante_pk=solicitante.pk %}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus"></i>
+                </a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if requisitos %}
+                    <div class="list-group list-group-flush">
+                        {% for requisito in requisitos %}
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ requisito.nombre|title }}</h6>
+                                    <span class="badge status-badge status-{{ requisito.estado }}">
+                                        {{ requisito.get_estado_display }}
+                                    </span>
+                                    {% with doc=requisito.obtener_documento_actual %}
+                                    {% if doc %}
+                                    <small class="text-muted d-block">
+                                        <i class="bi bi-file-earmark me-1"></i>v{{ doc.version }} - {{ doc.nombre_archivo }}
+                                    </small>
+                                    {% endif %}
+                                    {% endwith %}
+                                </div>
+                                <div class="btn-group">
+                                    {% with doc=requisito.obtener_documento_actual %}
+                                    {% if doc and doc.ruta_archivo %}
+                                    <a href="{% url 'migration:ver_documento' documento_pk=doc.pk %}"
+                                       target="_blank"
+                                       class="btn btn-sm btn-outline-secondary" title="Ver documento">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% endwith %}
+                                    {% if requisito.puede_subir_nuevo_documento %}
+                                    <a href="{% url 'migration:subir_documento' requisito_pk=requisito.pk %}"
+                                       class="btn btn-sm btn-outline-primary" title="Subir documento">
+                                        <i class="bi bi-upload"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if requisito.observaciones %}
+                            <small class="text-danger d-block mt-1">
+                                <i class="bi bi-exclamation-circle me-1"></i>{{ requisito.observaciones }}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-file-earmark-x" style="font-size: 2rem;"></i>
+                        <p class="mt-2">Sin requisitos asignados</p>
+                        {% if solicitante.tipo_visa %}
+                        <small>Los requisitos se asignan cuando se atiende la cita</small>
+                        {% else %}
+                        <a href="{% url 'migration:asignar_tipo_visa' solicitante_pk=solicitante.pk %}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus me-1"></i> Asignar Tipo de Visa
+                        </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navegación -->
+<div class="mt-4">
+    <a href="{% url 'migration:solicitante_lista' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Volver a la lista
+    </a>
+</div>
+{% endblock %}

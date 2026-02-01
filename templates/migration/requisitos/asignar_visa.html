@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Asignar Tipo de Visa y Requisitos - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-passport me-2"></i>Asignar Tipo de Visa y Requisitos</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-circle me-2"></i>{{ solicitante.nombre }}
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label for="id_tipo_visa" class="form-label fw-bold">1. Seleccione el Tipo de Visa</label>
+                        {{ form.tipo_visa }}
+                        {% if form.tipo_visa.errors %}
+                            <div class="text-danger small">{{ form.tipo_visa.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">2. Seleccione los Requisitos a Asignar</label>
+                        <div class="alert alert-info small">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Seleccione los requisitos que el solicitante deberá presentar. Los requisitos sugeridos según el tipo de visa se muestran en el panel lateral.
+                        </div>
+
+                        {% if form.requisitos.errors %}
+                            <div class="alert alert-danger small">{{ form.requisitos.errors.0 }}</div>
+                        {% endif %}
+
+                        <div class="row">
+                            {% for checkbox in form.requisitos %}
+                            <div class="col-md-6 mb-2">
+                                <div class="form-check">
+                                    {{ checkbox.tag }}
+                                    <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                        {{ checkbox.choice_label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:solicitante_detalle' pk=solicitante.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> Asignar Visa y Requisitos
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightbulb me-2"></i>Requisitos Sugeridos por Tipo de Visa
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Estos son los requisitos típicos para cada tipo de visa. Use esta información como guía para seleccionar los requisitos apropiados.
+                </p>
+                {% for tipo, requisitos in requisitos_sugeridos.items %}
+                <div class="mb-3 requisitos-sugeridos" data-tipo-visa="{{ tipo }}">
+                    <h6 class="text-primary">
+                        <i class="bi bi-passport me-2"></i>{{ tipo|title }}
+                    </h6>
+                    {% if requisitos %}
+                    <ul class="list-unstyled ms-4 small">
+                        {% for req in requisitos %}
+                        <li><i class="bi bi-check2 text-success me-2"></i>{{ req|title }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="ms-4 small text-muted">Sin requisitos sugeridos para este tipo</p>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="text-muted">No hay tipos de visa configurados.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-exclamation-triangle me-2"></i>Importante
+            </div>
+            <div class="card-body small">
+                <p class="mb-0">
+                    El agente tiene control total sobre qué requisitos se asignan al solicitante.
+                    Los requisitos sugeridos son solo una guía basada en el tipo de visa más común.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Resaltar requisitos sugeridos cuando cambia el tipo de visa
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoVisaSelect = document.getElementById('tipo_visa_select');
+    const sugerenciasDivs = document.querySelectorAll('.requisitos-sugeridos');
+
+    function actualizarSugerencias() {
+        const tipoSeleccionado = tipoVisaSelect.value;
+        sugerenciasDivs.forEach(function(div) {
+            if (div.dataset.tipoVisa === tipoSeleccionado) {
+                div.classList.add('border', 'border-primary', 'rounded', 'p-2', 'bg-light');
+            } else {
+                div.classList.remove('border', 'border-primary', 'rounded', 'p-2', 'bg-light');
+            }
+        });
+    }
+
+    if (tipoVisaSelect) {
+        tipoVisaSelect.addEventListener('change', actualizarSugerencias);
+        actualizarSugerencias(); // Ejecutar al cargar
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

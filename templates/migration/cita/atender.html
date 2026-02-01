@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Atender Cita - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-check2-square me-2"></i>Atender Cita</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-person-circle me-2"></i>Información de la Cita
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Solicitante</h6>
+                        <p class="h5">{{ cita.solicitante.nombre }}</p>
+                        <p class="text-muted">Cédula: {{ cita.solicitante.cedula|default:"No registrada" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Datos de Contacto</h6>
+                        <p class="mb-1"><i class="bi bi-envelope me-2"></i>{{ cita.solicitante.email|default:"No registrado" }}</p>
+                        <p><i class="bi bi-telephone me-2"></i>{{ cita.solicitante.telefono|default:"No registrado" }}</p>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <h6 class="alert-heading"><i class="bi bi-calendar-event me-2"></i>Detalles de la Cita</h6>
+                    <p class="mb-1"><strong>Fecha:</strong> {{ cita.inicio|date:"l, d F Y" }}</p>
+                    <p class="mb-1"><strong>Hora:</strong> {{ cita.inicio|time:"H:i" }} - {{ cita.fin|time:"H:i" }}</p>
+                    <p class="mb-0"><strong>Agente asignado:</strong> {{ cita.agente.nombre }}</p>
+                </div>
+
+                <hr>
+
+                <h5 class="mb-3"><i class="bi bi-card-checklist me-2"></i>Requisitos a Asignar</h5>
+
+                <div class="alert alert-secondary">
+                    <strong>Tipo de Visa:</strong>
+                    {% if cita.solicitante.tipo_visa %}
+                        <span class="badge bg-info">{{ cita.solicitante.get_tipo_visa_display }}</span>
+                    {% else %}
+                        <span class="text-danger">No asignado</span>
+                        <a href="{% url 'migration:asignar_tipo_visa' solicitante_pk=cita.solicitante.pk %}" class="btn btn-sm btn-primary ms-2">Asignar</a>
+                    {% endif %}
+                </div>
+
+                {% if requisitos_visa %}
+                <p>Se asignarán los siguientes requisitos:</p>
+                <ul class="list-group mb-4">
+                    {% for req in requisitos_visa %}
+                    <li class="list-group-item">
+                        <i class="bi bi-file-earmark text-primary me-2"></i>{{ req|title }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:lista_citas' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Volver
+                        </a>
+                        {% if cita.solicitante.tipo_visa %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i> Confirmar Atención y Asignar Requisitos
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Flujo del Proceso
+            </div>
+            <div class="card-body">
+                <ol class="small">
+                    <li class="mb-2"><span class="badge bg-success">✓</span> Cita agendada</li>
+                    <li class="mb-2"><span class="badge bg-primary">→</span> <strong>Atender cita</strong></li>
+                    <li class="mb-2 text-muted">Asignar requisitos</li>
+                    <li class="mb-2 text-muted">Solicitante sube documentos</li>
+                    <li class="mb-2 text-muted">Agente revisa documentos</li>
+                    <li class="mb-2 text-muted">Aprobar/Rechazar carpeta</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

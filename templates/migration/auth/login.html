@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Iniciar Sesión - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow">
+            <div class="card-header text-center bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-globe-americas me-2"></i>MigraFlow
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <h5 class="text-center mb-4">Iniciar Sesión</h5>
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">
+                            <i class="bi bi-person me-1"></i>{{ form.username.label }}
+                        </label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="id_password" class="form-label">
+                            <i class="bi bi-lock me-1"></i>{{ form.password.label }}
+                        </label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <div class="text-danger small">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+                        </button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+
+                <div class="text-center">
+                    <p class="text-muted mb-2">¿No tiene una cuenta?</p>
+                    <a href="{% url 'migration:registro' %}" class="btn btn-outline-success w-100">
+                        <i class="bi bi-person-plus me-2"></i>Registrarse como Solicitante
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Sistema de gestión de trámites migratorios
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}

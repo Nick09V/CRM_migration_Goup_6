@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+
+{% block title %}Panel de Administración - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-shield-lock me-2"></i>Panel de Administración
+    </h1>
+    <span class="badge bg-danger">Administrador</span>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body dashboard-stat text-center">
+                <i class="bi bi-person-badge" style="font-size: 2rem; color: #3498db;"></i>
+                <div class="stat-number">{{ total_agentes }}</div>
+                <div class="stat-label">Agentes</div>
+                <small class="text-muted">{{ agentes_activos }} activos / {{ agentes_inactivos }} inactivos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body dashboard-stat text-center">
+                <i class="bi bi-people" style="font-size: 2rem; color: #27ae60;"></i>
+                <div class="stat-number">{{ total_solicitantes }}</div>
+                <div class="stat-label">Solicitantes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-info">
+            <div class="card-body dashboard-stat text-center">
+                <i class="bi bi-passport" style="font-size: 2rem; color: #17a2b8;"></i>
+                <div class="stat-number">{{ total_tipos_visa }}</div>
+                <div class="stat-label">Tipos de Visa</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body dashboard-stat text-center">
+                <i class="bi bi-card-checklist" style="font-size: 2rem; color: #f39c12;"></i>
+                <div class="stat-number">{{ total_requisitos }}</div>
+                <div class="stat-label">Requisitos</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Acciones Rápidas -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightning me-2"></i>Acciones de Administración
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'migration:crear_agente' %}" class="btn btn-primary">
+                        <i class="bi bi-person-plus-fill me-2"></i>Crear Nuevo Agente
+                    </a>
+                    <a href="{% url 'migration:crear_tipo_visa' %}" class="btn btn-info">
+                        <i class="bi bi-passport-fill me-2"></i>Crear Tipo de Visa
+                    </a>
+                    <a href="{% url 'migration:crear_requisito' %}" class="btn btn-warning">
+                        <i class="bi bi-plus-circle-fill me-2"></i>Crear Nuevo Requisito
+                    </a>
+                    <a href="{% url 'migration:agente_dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-speedometer2 me-2"></i>Ir al Panel de Agente
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Información del Sistema
+            </div>
+            <div class="card-body">
+                <p><i class="bi bi-check-circle text-success me-2"></i>Sistema activo</p>
+                <p><i class="bi bi-clock me-2"></i>Horario de atención: 08:00 - 12:00</p>
+                <p class="mb-0"><i class="bi bi-calendar me-2"></i>Días laborales: Lunes a Sábado</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Agentes -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-person-badge me-2"></i>Gestión de Agentes</span>
+        <a href="{% url 'migration:crear_agente' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus"></i> Nuevo
+        </a>
+    </div>
+    <div class="card-body">
+        {% if agentes %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Usuario</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agente in agentes %}
+                    <tr>
+                        <td>{{ agente.nombre }}</td>
+                        <td>
+                            {% if agente.usuario %}
+                                <i class="bi bi-person-check text-success me-1"></i>{{ agente.usuario.username }}
+                            {% else %}
+                                <span class="text-muted">Sin usuario asignado</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if agente.activo %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{% url 'migration:cambiar_estado_agente' agente_pk=agente.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                {% if agente.activo %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Desactivar agente">
+                                        <i class="bi bi-person-x"></i> Desactivar
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Activar agente">
+                                        <i class="bi bi-person-check"></i> Activar
+                                    </button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <i class="bi bi-person-x" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-muted mt-2">No hay agentes registrados</p>
+            <a href="{% url 'migration:crear_agente' %}" class="btn btn-primary">
+                <i class="bi bi-person-plus me-1"></i> Crear primer agente
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tipos de Visa y Requisitos -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-passport me-2"></i>Tipos de Visa</span>
+                <a href="{% url 'migration:crear_tipo_visa' %}" class="btn btn-sm btn-info">
+                    <i class="bi bi-plus"></i> Nuevo
+                </a>
+            </div>
+            <div class="card-body">
+                {% if tipos_visa %}
+                <ul class="list-group list-group-flush">
+                    {% for tipo in tipos_visa %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ tipo.nombre }}</strong>
+                            <small class="text-muted d-block">Código: {{ tipo.codigo }}</small>
+                        </div>
+                        {% if tipo.activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted text-center py-3">No hay tipos de visa registrados</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-card-checklist me-2"></i>Catálogo de Requisitos</span>
+                <a href="{% url 'migration:crear_requisito' %}" class="btn btn-sm btn-warning">
+                    <i class="bi bi-plus"></i> Nuevo
+                </a>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                {% if requisitos_catalogo %}
+                <ul class="list-group list-group-flush">
+                    {% for requisito in requisitos_catalogo %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ requisito.nombre|title }}</strong>
+                            {% if requisito.descripcion %}
+                            <small class="text-muted d-block">{{ requisito.descripcion|truncatewords:10 }}</small>
+                            {% endif %}
+                        </div>
+                        {% if requisito.activo %}
+                            <span class="badge bg-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted text-center py-3">No hay requisitos en el catálogo</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

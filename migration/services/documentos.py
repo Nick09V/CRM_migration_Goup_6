@@ -1,7 +1,3 @@
-"""
-Servicio de gestión de documentos migratorios.
-Gestiona la lógica de negocio para subir, versionar y almacenar documentos.
-"""
 from __future__ import annotations
 import shutil
 from dataclasses import dataclass
@@ -39,22 +35,10 @@ class ResultadoSubidaDocumento:
 
 
 def obtener_estados_revision_permitidos() -> list[str]:
-    """
-    Obtiene la lista de estados de revisión permitidos.
-
-    Returns:
-        Lista de estados permitidos.
-    """
     return [estado[0] for estado in ESTADOS_DOCUMENTO]
 
 
 def obtener_tipos_visa_soportados() -> list[str]:
-    """
-    Obtiene la lista de tipos de visa soportados.
-
-    Returns:
-        Lista de tipos de visa.
-    """
     return [visa[0] for visa in TIPOS_VISA]
 
 
@@ -64,20 +48,6 @@ def crear_estructura_carpetas(
     nombre_requisito: str,
     version: int
 ) -> Path:
-    """
-    Crea la estructura de carpetas para almacenar un documento.
-
-    Estructura: Documentos/CI_solicitante/tipoVisa/documentoCarpeta/version_n/
-
-    Args:
-        cedula: Cédula del solicitante.
-        tipo_visa: Tipo de visa del solicitante.
-        nombre_requisito: Nombre del requisito/documento.
-        version: Número de versión del documento.
-
-    Returns:
-        Path de la carpeta creada.
-    """
     nombre_requisito_limpio = nombre_requisito.replace(" ", "_")
     ruta = RUTA_BASE_DOCUMENTOS / cedula / tipo_visa / nombre_requisito_limpio / f"version_{version}"
 
@@ -92,17 +62,6 @@ def guardar_archivo_fisico(
     nombre_archivo: str,
     contenido: bytes = b""
 ) -> Path:
-    """
-    Guarda un archivo físico en la carpeta especificada.
-
-    Args:
-        ruta_carpeta: Ruta de la carpeta donde guardar.
-        nombre_archivo: Nombre del archivo a guardar.
-        contenido: Contenido del archivo (bytes).
-
-    Returns:
-        Path del archivo guardado.
-    """
     ruta_archivo = ruta_carpeta / nombre_archivo
 
     with open(ruta_archivo, "wb") as f:
@@ -112,15 +71,6 @@ def guardar_archivo_fisico(
 
 
 def eliminar_carpeta_solicitante(cedula: str) -> bool:
-    """
-    Elimina la carpeta completa de un solicitante.
-
-    Args:
-        cedula: Cédula del solicitante.
-
-    Returns:
-        True si se eliminó correctamente, False si no existía.
-    """
     ruta = RUTA_BASE_DOCUMENTOS / cedula
 
     if ruta.exists():
@@ -130,27 +80,12 @@ def eliminar_carpeta_solicitante(cedula: str) -> bool:
 
 
 def limpiar_carpeta_documentos() -> bool:
-    """
-    Elimina todos los documentos de la carpeta base.
-
-    Returns:
-        True si se limpió correctamente.
-    """
     if RUTA_BASE_DOCUMENTOS.exists():
         shutil.rmtree(RUTA_BASE_DOCUMENTOS)
     return True
 
 
 def validar_solicitante_para_carga(solicitante: Solicitante) -> None:
-    """
-    Valida que el solicitante tenga los datos necesarios para subir documentos.
-
-    Args:
-        solicitante: El solicitante a validar.
-
-    Raises:
-        ValidationError: Si faltan datos requeridos.
-    """
     if not solicitante.cedula:
         raise ValidationError("El solicitante debe tener una cédula registrada.")
 
@@ -159,15 +94,6 @@ def validar_solicitante_para_carga(solicitante: Solicitante) -> None:
 
 
 def validar_carga_documento(requisito: Requisito) -> None:
-    """
-    Valida si se puede subir un documento al requisito.
-
-    Args:
-        requisito: El requisito donde se quiere subir.
-
-    Raises:
-        ValidationError: Si no se puede subir el documento.
-    """
     if not requisito.carga_habilitada:
         raise ValidationError(
             f"La carga de documentos está deshabilitada para '{requisito.nombre}'."
@@ -191,16 +117,6 @@ def obtener_o_crear_requisito(
     solicitante: Solicitante,
     nombre_requisito: str
 ) -> Requisito:
-    """
-    Obtiene o crea un requisito para el solicitante.
-
-    Args:
-        solicitante: El solicitante.
-        nombre_requisito: Nombre del requisito.
-
-    Returns:
-        Instancia de Requisito.
-    """
     requisito, _ = Requisito.objects.get_or_create(
         solicitante=solicitante,
         nombre=nombre_requisito,
@@ -213,15 +129,6 @@ def obtener_o_crear_requisito(
 
 
 def obtener_o_crear_carpeta(solicitante: Solicitante) -> Carpeta:
-    """
-    Obtiene o crea la carpeta del solicitante.
-
-    Args:
-        solicitante: El solicitante.
-
-    Returns:
-        Instancia de Carpeta.
-    """
     carpeta, _ = Carpeta.objects.get_or_create(solicitante=solicitante)
     return carpeta
 
@@ -232,27 +139,6 @@ def subir_documento(
     nombre_archivo: str,
     contenido: bytes = b""
 ) -> ResultadoSubidaDocumento:
-    """
-    Sube un documento para un requisito del solicitante.
-
-    Reglas de negocio:
-    - Si es la primera versión, se crea como versión 1.
-    - Si el último documento fue rechazado, se crea la siguiente versión.
-    - Si hay un documento pendiente, no se puede subir.
-    - Si el documento fue aprobado, no se puede subir nueva versión.
-
-    Args:
-        solicitante: El solicitante que sube el documento.
-        nombre_requisito: Nombre del requisito/documento.
-        nombre_archivo: Nombre del archivo a subir.
-        contenido: Contenido del archivo en bytes.
-
-    Returns:
-        ResultadoSubidaDocumento con el estado de la operación.
-
-    Raises:
-        ValidationError: Si no se cumplen las condiciones para subir.
-    """
     # Validar solicitante
     validar_solicitante_para_carga(solicitante)
 
@@ -306,16 +192,6 @@ def subir_documento(
 
 
 def rechazar_documento(documento: Documento, observaciones: str = "") -> Documento:
-    """
-    Rechaza un documento y habilita la carga de una nueva versión.
-
-    Args:
-        documento: El documento a rechazar.
-        observaciones: Observaciones del rechazo.
-
-    Returns:
-        El documento actualizado.
-    """
     documento.marcar_como_faltante()
 
     requisito = documento.requisito
@@ -327,15 +203,6 @@ def rechazar_documento(documento: Documento, observaciones: str = "") -> Documen
 
 
 def aprobar_documento(documento: Documento) -> Documento:
-    """
-    Aprueba un documento y deshabilita la carga de nuevas versiones.
-
-    Args:
-        documento: El documento a aprobar.
-
-    Returns:
-        El documento actualizado.
-    """
     documento.marcar_como_revisado()
 
     requisito = documento.requisito
@@ -346,28 +213,10 @@ def aprobar_documento(documento: Documento) -> Documento:
 
 
 def verificar_archivo_existe(ruta: str) -> bool:
-    """
-    Verifica si un archivo existe en el sistema de archivos.
-
-    Args:
-        ruta: Ruta del archivo.
-
-    Returns:
-        True si existe, False en caso contrario.
-    """
     return Path(ruta).exists()
 
 
 def listar_documentos_solicitante(solicitante: Solicitante) -> list[dict]:
-    """
-    Lista todos los documentos de un solicitante con sus rutas.
-
-    Args:
-        solicitante: El solicitante.
-
-    Returns:
-        Lista de diccionarios con información de documentos.
-    """
     documentos = Documento.objects.filter(
         requisito__solicitante=solicitante
     ).select_related("requisito")
@@ -386,15 +235,6 @@ def listar_documentos_solicitante(solicitante: Solicitante) -> list[dict]:
 
 
 def puede_subir_nueva_version(requisito: Requisito) -> tuple[bool, str]:
-    """
-    Verifica si se puede subir una nueva versión del documento.
-
-    Args:
-        requisito: El requisito a verificar.
-
-    Returns:
-        Tupla (puede_subir, mensaje_razon).
-    """
     if not requisito.carga_habilitada:
         return False, "La carga está deshabilitada."
 

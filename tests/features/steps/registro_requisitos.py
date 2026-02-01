@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Steps para la característica de Registro de requisitos migratorios.
-Implementa los pasos BDD para los escenarios de registro de requisitos.
-
-Reutiliza la lógica de agendamiento para obtener citas pendientes.
-"""
 from behave import given, when, then, step
 from django.utils import timezone as dj_timezone
 from django.core.exceptions import ValidationError as DjValidationError
@@ -32,12 +25,6 @@ faker = Faker("es_ES")
 
 
 def crear_solicitante() -> Solicitante:
-    """
-    Crea un nuevo solicitante con datos aleatorios.
-
-    Returns:
-        Instancia de Solicitante guardada en la base de datos.
-    """
     return Solicitante.objects.create(
         nombre=faker.unique.name(),
         cedula=faker.unique.numerify(text="##########"),
@@ -47,12 +34,6 @@ def crear_solicitante() -> Solicitante:
 
 
 def obtener_o_crear_agente() -> Agente:
-    """
-    Asegura que exista un agente activo en el sistema.
-
-    Returns:
-        Instancia de Agente activo.
-    """
     agente, _ = Agente.objects.get_or_create(
         nombre="Agente Requisitos",
         defaults={"activo": True}
@@ -61,30 +42,12 @@ def obtener_o_crear_agente() -> Agente:
 
 
 def crear_horario_hoy(hora: int = 9) -> dj_timezone.datetime:
-    """
-    Crea un horario para el día de hoy.
-
-    Args:
-        hora: Hora del día (entre 8 y 11).
-
-    Returns:
-        DateTime con zona horaria para hoy.
-    """
     hoy = dj_timezone.localtime(dj_timezone.now()).date()
     horario_naive = dj_timezone.datetime.combine(hoy, time(hora, 0))
     return dj_timezone.make_aware(horario_naive)
 
 
 def crear_cita_pendiente_hoy() -> Cita:
-    """
-    Crea una cita pendiente para el día de hoy.
-
-    Esto simula el escenario donde el solicitante tiene una cita
-    pendiente programada para hoy, permitiendo la asignación de requisitos.
-
-    Returns:
-        Instancia de Cita pendiente para hoy.
-    """
     solicitante = crear_solicitante()
     agente = obtener_o_crear_agente()
     horario = crear_horario_hoy(hora=9)
@@ -103,15 +66,6 @@ def crear_cita_pendiente_hoy() -> Cita:
 
 
 def parsear_lista_requisitos(requisitos_str: str) -> list[str]:
-    """
-    Parsea una cadena de requisitos separados por coma.
-
-    Args:
-        requisitos_str: String con requisitos separados por coma.
-
-    Returns:
-        Lista de requisitos limpia.
-    """
     return [req.strip() for req in requisitos_str.split(",") if req.strip()]
 
 
@@ -166,9 +120,7 @@ def paso_requisitos_cargados(context):
         requisito = row["requisitos_cargado"].strip()
         context.requisitos_cargados.append(requisito)
 
-    assert len(context.requisitos_cargados) > 0, (
-        "Debe haber al menos un requisito cargado en el sistema"
-    )
+    assert len(context.requisitos_cargados) == 8
 
 
 @then('el agente asigna los siguientes requisitos al cliente "{requisitos}"')
@@ -179,7 +131,7 @@ def paso_asignar_requisitos(context, requisitos: str):
     # Parsear los requisitos esperados
     requisitos_esperados = parsear_lista_requisitos(requisitos)
 
-    # Obtener requisitos cargados (si existen)
+    # Obtener requisitos cargados
     requisitos_cargados = getattr(context, 'requisitos_cargados', None)
 
     try:

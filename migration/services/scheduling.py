@@ -1,7 +1,3 @@
-"""
-Servicio de agendamiento de citas migratorias.
-Gestiona la lógica de negocio para agendar citas con agentes disponibles.
-"""
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
@@ -24,15 +20,6 @@ class SolicitudAgendamiento:
 
 
 def buscar_agente_disponible(inicio: datetime) -> Agente | None:
-    """
-    Busca un agente activo que esté disponible en el horario especificado.
-
-    Args:
-        inicio: Fecha y hora de inicio de la cita.
-
-    Returns:
-        Agente disponible o None si no hay ninguno.
-    """
     return (
         Agente.objects.filter(activo=True)
         .exclude(citas__inicio=inicio, citas__estado=Cita.ESTADO_PENDIENTE)
@@ -42,15 +29,6 @@ def buscar_agente_disponible(inicio: datetime) -> Agente | None:
 
 
 def validar_solicitante_sin_cita_pendiente(solicitante: Solicitante) -> None:
-    """
-    Valida que el solicitante no tenga una cita pendiente.
-
-    Args:
-        solicitante: El solicitante a validar.
-
-    Raises:
-        ValidationError: Si el solicitante ya tiene una cita pendiente.
-    """
     if solicitante.tiene_cita_pendiente():
         raise ValidationError(
             "El solicitante ya tiene una cita pendiente. "
@@ -59,21 +37,6 @@ def validar_solicitante_sin_cita_pendiente(solicitante: Solicitante) -> None:
 
 
 def agendar_cita(solicitud: SolicitudAgendamiento) -> Cita:
-    """
-    Agenda una cita para el solicitante en el horario especificado.
-
-    El fin de la cita se calcula automáticamente sumando una hora al inicio.
-
-    Args:
-        solicitud: Datos de la solicitud de agendamiento.
-
-    Returns:
-        La cita creada y guardada.
-
-    Raises:
-        ValidationError: Si no hay agentes disponibles o el solicitante
-                        ya tiene una cita pendiente.
-    """
     validar_solicitante_sin_cita_pendiente(solicitud.solicitante)
 
     agente = buscar_agente_disponible(solicitud.inicio)
@@ -99,30 +62,12 @@ class ResultadoCancelacion:
 
 
 def calcular_dias_restantes(cita: Cita) -> int:
-    """
-    Calcula los días restantes hasta la fecha de la cita.
-
-    Args:
-        cita: La cita a evaluar.
-
-    Returns:
-        Número de días restantes hasta la cita.
-    """
     ahora = timezone.localtime(timezone.now())
     fecha_cita = timezone.localtime(cita.inicio)
     return (fecha_cita.date() - ahora.date()).days
 
 
 def validar_tiempo_cancelacion(cita: Cita) -> None:
-    """
-    Valida que la cancelación se realice con al menos 3 días de anticipación.
-
-    Args:
-        cita: La cita a validar.
-
-    Raises:
-        ValidationError: Si faltan menos de 3 días para la cita.
-    """
     dias_restantes = calcular_dias_restantes(cita)
 
     if dias_restantes < DIAS_MINIMOS_CANCELACION:
@@ -134,18 +79,6 @@ def validar_tiempo_cancelacion(cita: Cita) -> None:
 
 
 def cancelar_cita(cita: Cita) -> ResultadoCancelacion:
-    """
-    Cancela una cita pendiente.
-
-    Args:
-        cita: La cita a cancelar.
-
-    Returns:
-        ResultadoCancelacion con el estado de la operación.
-
-    Raises:
-        ValidationError: Si la cita no puede ser cancelada.
-    """
     if cita.estado != Cita.ESTADO_PENDIENTE:
         raise ValidationError("Solo se pueden cancelar citas pendientes.")
 
@@ -172,18 +105,6 @@ class ResultadoReprogramacion:
 
 
 def validar_tiempo_reprogramacion(cita: Cita) -> None:
-    """
-    Valida que la reprogramación se realice con al menos 3 días de anticipación.
-
-    Reutiliza la lógica de cálculo de días restantes para mantener consistencia
-    con las reglas de negocio de cancelación.
-
-    Args:
-        cita: La cita a validar.
-
-    Raises:
-        ValidationError: Si faltan menos de 3 días para la cita.
-    """
     dias_restantes = calcular_dias_restantes(cita)
 
     if dias_restantes < DIAS_MINIMOS_REPROGRAMACION:
@@ -195,36 +116,11 @@ def validar_tiempo_reprogramacion(cita: Cita) -> None:
 
 
 def validar_cita_pendiente(cita: Cita) -> None:
-    """
-    Valida que la cita esté en estado pendiente.
-
-    Args:
-        cita: La cita a validar.
-
-    Raises:
-        ValidationError: Si la cita no está pendiente.
-    """
     if cita.estado != Cita.ESTADO_PENDIENTE:
         raise ValidationError("Solo se pueden reprogramar citas pendientes.")
 
 
 def reprogramar_cita(cita: Cita, nuevo_inicio: datetime) -> ResultadoReprogramacion:
-    """
-    Reprograma una cita pendiente a un nuevo horario.
-
-    Libera el horario anterior del agente y asigna el nuevo horario.
-    Si no hay agente disponible en el nuevo horario, intenta buscar otro agente.
-
-    Args:
-        cita: La cita a reprogramar.
-        nuevo_inicio: Nueva fecha y hora de inicio para la cita.
-
-    Returns:
-        ResultadoReprogramacion con el estado de la operación y la cita actualizada.
-
-    Raises:
-        ValidationError: Si la cita no puede ser reprogramada.
-    """
     # Validar que la cita esté pendiente
     validar_cita_pendiente(cita)
 

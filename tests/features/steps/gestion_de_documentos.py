@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Steps para la característica de repositorio de documentos autoorganizado.
-Implementa los pasos BDD para los escenarios de carga de documentos.
-"""
 from behave import given, when, then
 from django.core.exceptions import ValidationError as DjValidationError
 
@@ -32,15 +27,6 @@ faker = Faker("es_ES")
 
 
 def crear_solicitante_con_visa(tipo_visa: str) -> Solicitante:
-    """
-    Crea un solicitante con cédula y tipo de visa asignados.
-
-    Args:
-        tipo_visa: Tipo de visa a asignar.
-
-    Returns:
-        Instancia de Solicitante.
-    """
     return Solicitante.objects.create(
         nombre=faker.unique.name(),
         cedula=faker.unique.numerify(text="##########"),
@@ -51,10 +37,6 @@ def crear_solicitante_con_visa(tipo_visa: str) -> Solicitante:
 
 
 def limpiar_solicitante(context) -> None:
-    """
-    Limpia los datos del solicitante del contexto.
-    Elimina la carpeta física y los registros de BD.
-    """
     if hasattr(context, "solicitante") and context.solicitante:
         # Eliminar carpeta física
         if context.solicitante.cedula:
@@ -323,4 +305,3 @@ def paso_aprobar_documento_anterior(context):
 def paso_verificar_rechazo_subida(context):
     """Verifica que el sistema rechazó la subida."""
     assert context.error is not None, "Debería haber un error de validación"
-
