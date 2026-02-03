@@ -205,6 +205,14 @@ class Solicitante(models.Model):
         """Verifica si el solicitante tiene una cita pendiente activa."""
         return self.citas.filter(estado=Cita.ESTADO_PENDIENTE).exists()
 
+    def tiene_tipo_visa(self, codigo_visa: str) -> bool:
+        """Verifica si el solicitante tiene asignado el tipo de visa especificado."""
+        return self.tipo_visa == codigo_visa
+
+    def tiene_tipo_visa_asignado(self) -> bool:
+        """Verifica si el solicitante tiene algún tipo de visa asignado."""
+        return bool(self.tipo_visa)
+
 
 class Agente(models.Model):
     usuario = models.OneToOneField(
@@ -370,6 +378,18 @@ class Cita(models.Model):
         fecha_cita = timezone.localtime(self.inicio).date()
         return fecha_cita == hoy
 
+    def esta_pendiente(self) -> bool:
+        """Verifica si la cita está en estado pendiente."""
+        return self.estado == Cita.ESTADO_PENDIENTE
+
+    def esta_exitosa(self) -> bool:
+        """Verifica si la cita está en estado exitosa."""
+        return self.estado == Cita.ESTADO_EXITOSA
+
+    def esta_cancelada(self) -> bool:
+        """Verifica si la cita está en estado cancelada."""
+        return self.estado == Cita.ESTADO_CANCELADA
+
     def marcar_como_exitosa(self) -> None:
         if self.estado != Cita.ESTADO_PENDIENTE:
             raise ValidationError(
@@ -424,6 +444,10 @@ class Requisito(models.Model):
 
     def esta_pendiente_de_subir(self):
         return self.estado == EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR
+
+    def tiene_carga_habilitada(self) -> bool:
+        """Verifica si la carga de documentos está habilitada para este requisito."""
+        return self.carga_habilitada
 
     def obtener_ultima_version(self) -> int:
         ultimo_doc = self.documentos.order_by("-version").first()

@@ -3,7 +3,8 @@
 
 @ready
 @documentos
-Característica: Registro de requisitos migratorios
+Característica:
+
   Como agente de migración
   Quiero asignar los requisitos del solicitante
   Para monitorear de forma eficiente su proceso migratorio
