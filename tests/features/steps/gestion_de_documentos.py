@@ -6,15 +6,14 @@ from migration.models import (
     Requisito,
     Documento,
     Carpeta,
-    ESTADO_DOCUMENTO_FALTANTE,
+    TipoVisa,
+    EstadoDocumento,
 )
 from migration.services.documentos import (
     subir_documento,
     rechazar_documento,
     aprobar_documento,
     eliminar_carpeta_solicitante,
-    obtener_estados_revision_permitidos,
-    obtener_tipos_visa_soportados,
     obtener_o_crear_requisito,
 )
 from faker import Faker
@@ -26,13 +25,46 @@ faker = Faker("es_ES")
 # ==================== Funciones auxiliares ====================
 
 
+def inicializar_tipos_visa_si_vacio() -> None:
+    """Inicializa los tipos de visa si están vacíos."""
+    if not TipoVisa.objects.filter(activo=True).exists():
+        TipoVisa.inicializar_tipos_default()
+
+
+def obtener_codigos_tipos_visa_activos() -> list[str]:
+    """Obtiene los códigos de tipos de visa activos desde el modelo."""
+    inicializar_tipos_visa_si_vacio()
+    return list(TipoVisa.objects.filter(activo=True).values_list('codigo', flat=True))
+
+
+def obtener_estados_documento_permitidos() -> list[str]:
+    """Obtiene los estados de documento permitidos desde el modelo EstadoDocumento."""
+    return [estado.value for estado in EstadoDocumento]
+
+
+def obtener_tipo_visa_valido(codigo: str) -> TipoVisa:
+    """Obtiene un tipo de visa válido del modelo o lanza error."""
+    inicializar_tipos_visa_si_vacio()
+    try:
+        return TipoVisa.objects.get(codigo=codigo, activo=True)
+    except TipoVisa.DoesNotExist:
+        tipos_disponibles = obtener_codigos_tipos_visa_activos()
+        raise AssertionError(
+            f"El tipo de visa '{codigo}' no existe o no está activo. "
+            f"Tipos disponibles: {tipos_disponibles}"
+        )
+
+
 def crear_solicitante_con_visa(tipo_visa: str) -> Solicitante:
+    # Validar que el tipo de visa existe en el modelo
+    tipo_visa_obj = obtener_tipo_visa_valido(tipo_visa)
+
     return Solicitante.objects.create(
         nombre=faker.unique.name(),
         cedula=faker.unique.numerify(text="##########"),
         telefono=faker.phone_number(),
         email=faker.email(),
-        tipo_visa=tipo_visa
+        tipo_visa=tipo_visa_obj.codigo
     )
 
 
@@ -61,22 +93,29 @@ def after_scenario(context, scenario):
 # ==================== Antecedentes ====================
 
 
-@given("los estados de revisión permitidos son: pendiente, revisado, faltante")
+@given("los estados de revisión permitidos son: pendiente, revisado, rechazado")
 def paso_estados_permitidos(context):
-    """Verifica que los estados de revisión permitidos estén configurados."""
-    estados = obtener_estados_revision_permitidos()
+    """Verifica que los estados de revisión permitidos estén configurados en el modelo."""
+    estados = obtener_estados_documento_permitidos()
 
-    assert "pendiente" in estados, "Debe existir el estado 'pendiente'"
-    assert "revisado" in estados, "Debe existir el estado 'revisado'"
-    assert "faltante" in estados, "Debe existir el estado 'faltante'"
+    # Verificar estados según EstadoDocumento
+    assert EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION.value in estados, (
+        "Debe existir el estado 'pendiente'"
+    )
+    assert EstadoDocumento.DOCUMENTO_REVISADO_APROBADO.value in estados, (
+        "Debe existir el estado 'revisado'"
+    )
+    assert EstadoDocumento.DOCUMENTO_REVISADO_RECHAZADO.value in estados, (
+        "Debe existir el estado 'rechazado'"
+    )
 
     context.estados_permitidos = estados
 
 
 @given("los tipos de visa soportados son: estudiantil, trabajo, residencial, turista")
 def paso_tipos_visa_soportados(context):
-    """Verifica que los tipos de visa soportados estén configurados."""
-    tipos = obtener_tipos_visa_soportados()
+    """Verifica que los tipos de visa soportados estén configurados en el modelo."""
+    tipos = obtener_codigos_tipos_visa_activos()
 
     assert "estudiantil" in tipos, "Debe existir el tipo 'estudiantil'"
     assert "trabajo" in tipos, "Debe existir el tipo 'trabajo'"
@@ -96,16 +135,21 @@ def paso_solicitante_sin_documento(context, tipo_visa: str, nombre_requisito: st
     context.nombre_requisito = nombre_requisito
     context.tipo_visa = tipo_visa
 
+    # Verificar que el solicitante tiene el tipo de visa asignado
+    assert context.solicitante.tiene_tipo_visa(tipo_visa), (
+        f"El solicitante debe tener el tipo de visa '{tipo_visa}'"
+    )
+
     # Crear el requisito sin documentos
     context.requisito = obtener_o_crear_requisito(
         solicitante=context.solicitante,
         nombre_requisito=nombre_requisito
     )
 
-    # Verificar que no tiene documentos
-    cantidad_docs = context.requisito.documentos.count()
-    assert cantidad_docs == 0, (
-        f"El requisito no debe tener documentos. Tiene {cantidad_docs}."
+    # Verificar que no tiene documentos usando método del requisito
+    documento_actual = context.requisito.obtener_documento_actual()
+    assert documento_actual is None, (
+        "El requisito no debe tener documentos previos"
     )
 
 
@@ -147,8 +191,11 @@ def paso_verificar_version(context, version_esperada: str):
     # Verificar que el documento existe en la BD
     documento = context.resultado.documento
     assert documento is not None, "Debe existir el documento en la BD"
-    assert documento.version == version_num, (
-        f"La versión en BD debe ser {version_num}, pero es {documento.version}"
+
+    # Usar método del requisito para verificar la versión
+    ultima_version = documento.requisito.obtener_ultima_version()
+    assert ultima_version == version_num, (
+        f"La última versión del requisito debe ser {version_num}, pero es {ultima_version}"
     )
 
     context.documento = documento
@@ -201,10 +248,10 @@ def paso_crear_documento_con_version(context, version_previa: int):
         if v < version_previa:
             rechazar_documento(context.documento)
 
-    # Verificar la versión
-    context.documento.refresh_from_db()
-    assert context.documento.version == version_previa, (
-        f"La versión debe ser {version_previa}, pero es {context.documento.version}"
+    # Verificar la versión usando método del requisito
+    ultima_version = context.requisito.obtener_ultima_version()
+    assert ultima_version == version_previa, (
+        f"La última versión debe ser {version_previa}, pero es {ultima_version}"
     )
 
 
@@ -216,15 +263,15 @@ def paso_rechazar_documento(context):
     # Rechazar el documento
     rechazar_documento(context.documento, "Documento rechazado para prueba")
 
-    # Verificar estado
+    # Verificar estado usando método encapsulado
     context.documento.refresh_from_db()
     assert context.documento.esta_documento_rechazado(), (
-        "El estado debe estar en el estado de rechazado"
+        "El documento debe estar en estado rechazado"
     )
 
-    # Verificar que se puede subir nueva versión
+    # Verificar que se puede subir nueva versión usando método encapsulado
     context.requisito.refresh_from_db()
-    assert context.requisito.carga_habilitada, (
+    assert context.requisito.tiene_carga_habilitada(), (
         "La carga debe estar habilitada después de rechazar"
     )
 
