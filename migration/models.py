@@ -380,6 +380,16 @@ class Cita(models.Model):
         super(Cita, self).save(update_fields=["estado"])
 
 
+
+
+
+
+class EstadoDocumento(models.TextChoices):
+    DOCUMENTO_PENDIENTE_POR_REVISION = 'pendiente', 'pendiente'
+    DOCUMENTO_PENDIENTE_POR_SUBIR = 'pendiente_subir', 'pendiente por subir'
+    DOCUMENTO_REVISADO_APROBADO = 'revisado', 'revisado'
+    DOCUMENTO_REVISADO_RECHAZADO = 'rechazado', 'rechazado'
+
 class Requisito(models.Model):
     """Representa un requisito/documento requerido para un solicitante."""
     solicitante = models.ForeignKey(
@@ -391,8 +401,8 @@ class Requisito(models.Model):
     estado = models.CharField(
         "Estado",
         max_length=20,
-        choices=ESTADOS_DOCUMENTO,
-        default=ESTADO_DOCUMENTO_FALTANTE
+        choices=EstadoDocumento.choices,
+        default=EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR
     )
     carga_habilitada = models.BooleanField("Carga Habilitada", default=True)
     observaciones = models.TextField("Observaciones", blank=True)
@@ -411,6 +421,9 @@ class Requisito(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.estado}"
+
+    def esta_pendiente_de_subir(self):
+        return self.estado == EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR
 
     def obtener_ultima_version(self) -> int:
         ultimo_doc = self.documentos.order_by("-version").first()
@@ -459,8 +472,8 @@ class Documento(models.Model):
     estado = models.CharField(
         "Estado",
         max_length=20,
-        choices=ESTADOS_DOCUMENTO,
-        default=ESTADO_DOCUMENTO_PENDIENTE
+        choices=EstadoDocumento.choices,
+        default=EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION
     )
     nombre_archivo = models.CharField("Nombre Archivo", max_length=255, blank=True)
     ruta_archivo = models.CharField("Ruta Archivo", max_length=500, blank=True)
@@ -495,27 +508,35 @@ class Documento(models.Model):
 
         return f"Documentos/{cedula}/{tipo_visa}/{nombre_requisito}/version_{self.version}"
 
-    def es_version_pendiente(self) -> bool:
-        """Verifica si el documento está en estado pendiente."""
-        return self.estado == ESTADO_DOCUMENTO_PENDIENTE
+    def esta_documento_aprobado(self):
+        return self.estado == EstadoDocumento.DOCUMENTO_REVISADO_APROBADO
 
-    def es_version_rechazada(self) -> bool:
-        """Verifica si el documento ha sido rechazado (faltante)."""
-        return self.estado == ESTADO_DOCUMENTO_FALTANTE
+    def esta_documento_rechazado(self):
+        return self.estado == EstadoDocumento.DOCUMENTO_REVISADO_RECHAZADO
+
+    def esta_documento_pendiente(self):
+        return self.estado == EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION
+
+    def esta_documento_pendiente_por_subir(self):
+        return self.estado == EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR
 
     def marcar_como_pendiente(self) -> None:
         """Marca el documento como pendiente de revisión."""
-        self.estado = ESTADO_DOCUMENTO_PENDIENTE
+        self.estado = EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION
+        self.save(update_fields=["estado"])
+
+    def marcar_como_pendiente_por_subir(self):
+        self.estado = EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR
         self.save(update_fields=["estado"])
 
     def marcar_como_revisado(self) -> None:
         """Marca el documento como revisado/aprobado."""
-        self.estado = ESTADO_DOCUMENTO_REVISADO
+        self.estado = EstadoDocumento.DOCUMENTO_REVISADO_APROBADO
         self.save(update_fields=["estado"])
 
-    def marcar_como_faltante(self) -> None:
+    def marcar_como_rechazado(self) -> None:
         """Marca el documento como faltante/rechazado."""
-        self.estado = ESTADO_DOCUMENTO_FALTANTE
+        self.estado = EstadoDocumento.DOCUMENTO_REVISADO_RECHAZADO
         self.save(update_fields=["estado"])
 
 

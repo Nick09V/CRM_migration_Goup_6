@@ -10,6 +10,7 @@ from migration.models import (
     CatalogoRequisito,
     REQUISITOS_POR_VISA,
     ESTADO_DOCUMENTO_FALTANTE,
+    EstadoDocumento
 )
 
 
@@ -116,7 +117,7 @@ def asignar_requisitos(
             solicitante=solicitante,
             nombre=nombre,
             defaults={
-                "estado": ESTADO_DOCUMENTO_FALTANTE,
+                "estado": EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR,
                 "carga_habilitada": True,
             }
         )
@@ -140,7 +141,7 @@ def verificar_requisitos_pendientes(solicitante: Solicitante) -> bool:
     if not requisitos.exists():
         return False
 
-    return all(req.estado == ESTADO_DOCUMENTO_FALTANTE for req in requisitos)
+    return all(req.estado == EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR for req in requisitos)
 
 
 def obtener_catalogo_requisitos() -> list[CatalogoRequisito]:

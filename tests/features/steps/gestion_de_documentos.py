@@ -154,15 +154,12 @@ def paso_verificar_version(context, version_esperada: str):
     context.documento = documento
 
 
-@then('el estado del documento cambia a "{estado_esperado}"')
-def paso_verificar_estado_documento(context, estado_esperado: str):
+@then('el documento queda pendiente para su revisión')
+def paso_verificar_estado_documento(context):
     """Verifica que el documento tenga el estado esperado."""
     context.documento.refresh_from_db()
-
-    estado_esperado_lower = estado_esperado.lower()
-    assert context.documento.estado == estado_esperado_lower, (
-        f"El estado debe ser '{estado_esperado_lower}', "
-        f"pero es '{context.documento.estado}'"
+    assert context.documento.esta_documento_pendiente(), (
+        f"El estado debe estar en estado pendiente"
     )
 
 
@@ -221,8 +218,8 @@ def paso_rechazar_documento(context):
 
     # Verificar estado
     context.documento.refresh_from_db()
-    assert context.documento.estado == ESTADO_DOCUMENTO_FALTANTE, (
-        f"El estado debe ser 'faltante', pero es '{context.documento.estado}'"
+    assert context.documento.esta_documento_rechazado(), (
+        "El estado debe estar en el estado de rechazado"
     )
 
     # Verificar que se puede subir nueva versión
@@ -266,42 +263,11 @@ def paso_verificar_version_numerica(context, version_esperada: int):
     context.documento = context.resultado.documento
 
 
-@then('el estado queda "{estado_esperado}"')
-def paso_verificar_estado_final(context, estado_esperado: str):
+@then('el estado del documento se marca como pendiente para su revisión')
+def paso_verificar_estado_final(context):
     """Verifica que el documento tenga el estado final esperado."""
     context.documento.refresh_from_db()
 
-    estado_esperado_lower = estado_esperado.lower()
-    assert context.documento.estado == estado_esperado_lower, (
-        f"El estado debe ser '{estado_esperado_lower}', "
-        f"pero es '{context.documento.estado}'"
+    assert context.documento.esta_documento_pendiente(), (
+        "El estado debe estar con estado pendiente"
     )
-
-
-# ==================== Pasos adicionales de utilidad ====================
-
-
-@then("el archivo físico existe en la ruta correcta")
-def paso_verificar_archivo_fisico(context):
-    """Verifica que el archivo físico existe en el sistema de archivos."""
-    from pathlib import Path
-
-    ruta = context.resultado.ruta_archivo
-    assert Path(ruta).exists(), f"El archivo debe existir en: {ruta}"
-
-
-@given("que el documento anterior fue aprobado")
-def paso_aprobar_documento_anterior(context):
-    """Aprueba el documento anterior."""
-    aprobar_documento(context.documento)
-
-    context.documento.refresh_from_db()
-    assert context.documento.estado == "revisado", (
-        f"El estado debe ser 'revisado', pero es '{context.documento.estado}'"
-    )
-
-
-@then("el sistema rechaza la subida")
-def paso_verificar_rechazo_subida(context):
-    """Verifica que el sistema rechazó la subida."""
-    assert context.error is not None, "Debería haber un error de validación"

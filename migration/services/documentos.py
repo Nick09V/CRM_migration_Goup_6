@@ -12,11 +12,12 @@ from migration.models import (
     Requisito,
     Documento,
     Carpeta,
-    ESTADO_DOCUMENTO_PENDIENTE,
+    #ESTADO_DOCUMENTO_PENDIENTE,
     ESTADO_DOCUMENTO_FALTANTE,
-    ESTADO_DOCUMENTO_REVISADO,
+    #ESTADO_DOCUMENTO_REVISADO,
     ESTADOS_DOCUMENTO,
     TIPOS_VISA,
+    EstadoDocumento
 )
 
 
@@ -100,13 +101,15 @@ def validar_carga_documento(requisito: Requisito) -> None:
         )
 
     if not requisito.puede_subir_nuevo_documento():
-        documento_actual = requisito.obtener_documento_actual()
-        if documento_actual and documento_actual.estado == ESTADO_DOCUMENTO_PENDIENTE:
+        documento_actual: Documento = requisito.obtener_documento_actual()
+        #if documento_actual and documento_actual.estado == ESTADO_DOCUMENTO_PENDIENTE:
+        if documento_actual and documento_actual.esta_documento_pendiente():
             raise ValidationError(
                 f"El documento '{requisito.nombre}' ya tiene una versión pendiente de revisión. "
                 "Debe esperar la revisión antes de subir una nueva versión."
             )
-        elif documento_actual and documento_actual.estado == ESTADO_DOCUMENTO_REVISADO:
+        #elif documento_actual and documento_actual.estado == ESTADO_DOCUMENTO_REVISADO:
+        elif documento_actual and documento_actual.esta_documento_aprobado():
             raise ValidationError(
                 f"El documento '{requisito.nombre}' ya fue revisado y aprobado. "
                 "No se pueden subir más versiones."
@@ -170,7 +173,8 @@ def subir_documento(
     documento = Documento.objects.create(
         requisito=requisito,
         version=nueva_version,
-        estado=ESTADO_DOCUMENTO_PENDIENTE,
+        #estado=ESTADO_DOCUMENTO_PENDIENTE,
+        estado=EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION,
         nombre_archivo=nombre_archivo,
         ruta_archivo=str(ruta_archivo.relative_to(RUTA_BASE_DOCUMENTOS.parent))
     )
@@ -192,7 +196,7 @@ def subir_documento(
 
 
 def rechazar_documento(documento: Documento, observaciones: str = "") -> Documento:
-    documento.marcar_como_faltante()
+    documento.marcar_como_rechazado()
 
     requisito = documento.requisito
     requisito.habilitar_carga()
@@ -238,18 +242,21 @@ def puede_subir_nueva_version(requisito: Requisito) -> tuple[bool, str]:
     if not requisito.carga_habilitada:
         return False, "La carga está deshabilitada."
 
-    documento_actual = requisito.obtener_documento_actual()
+    documento_actual: Documento = requisito.obtener_documento_actual()
 
     if documento_actual is None:
         return True, "No hay documentos previos."
 
-    if documento_actual.estado == ESTADO_DOCUMENTO_PENDIENTE:
+    #if documento_actual.estado == ESTADO_DOCUMENTO_PENDIENTE:
+    if documento_actual.esta_documento_pendiente():
         return False, "Hay una versión pendiente de revisión."
 
-    if documento_actual.estado == ESTADO_DOCUMENTO_REVISADO:
+    #if documento_actual.estado == ESTADO_DOCUMENTO_REVISADO:
+    if documento_actual.esta_documento_aprobado():
         return False, "El documento ya fue aprobado."
 
-    if documento_actual.estado == ESTADO_DOCUMENTO_FALTANTE:
+    #if documento_actual.estado == ESTADO_DOCUMENTO_FALTANTE:
+    if documento_actual.esta_documento_rechazado():
         return True, "La versión anterior fue rechazada."
 
     return False, "Estado desconocido."

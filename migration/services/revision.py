@@ -90,7 +90,7 @@ def rechazar_documento(
     validar_documento_pendiente(documento)
 
     # Marcar como faltante/rechazado
-    documento.marcar_como_faltante()
+    documento.marcar_como_rechazado()
 
     # Actualizar requisito
     requisito = documento.requisito

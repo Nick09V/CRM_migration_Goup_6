@@ -23,13 +23,14 @@ from .models import (
     TipoVisa,
     CatalogoRequisito,
     TIPOS_VISA,
-    ESTADO_DOCUMENTO_PENDIENTE,
-    ESTADO_DOCUMENTO_REVISADO,
-    ESTADO_DOCUMENTO_FALTANTE,
+    #ESTADO_DOCUMENTO_PENDIENTE,
+    #ESTADO_DOCUMENTO_REVISADO,
+    #ESTADO_DOCUMENTO_FALTANTE,
     ESTADO_CARPETA_APROBADO,
     ESTADO_CARPETA_CERRADA_ACEPTADA,
     ESTADO_CARPETA_CERRADA_RECHAZADA,
     REQUISITOS_POR_VISA,
+    EstadoDocumento
 )
 
 from .forms import (
@@ -323,7 +324,8 @@ class SolicitantePanelView(SolicitanteMixin, TemplateView):
         requisitos = solicitante.requisitos.all()
         if requisitos.exists():
             total = requisitos.count()
-            aprobados = requisitos.filter(estado=ESTADO_DOCUMENTO_REVISADO).count()
+            #aprobados = requisitos.filter(estado=ESTADO_DOCUMENTO_REVISADO).count()
+            aprobados = requisitos.filter(estado=EstadoDocumento.DOCUMENTO_REVISADO_APROBADO).count()
             context['progreso_documentos'] = int((aprobados / total) * 100)
         else:
             context['progreso_documentos'] = 0
@@ -461,7 +463,8 @@ class HomeView(TemplateView):
         context = super().get_context_data(**kwargs)
         context['total_solicitantes'] = Solicitante.objects.count()
         context['citas_pendientes'] = Cita.objects.filter(estado=Cita.ESTADO_PENDIENTE).count()
-        context['documentos_pendientes'] = Documento.objects.filter(estado=ESTADO_DOCUMENTO_PENDIENTE).count()
+        #context['documentos_pendientes'] = Documento.objects.filter(estado=ESTADO_DOCUMENTO_PENDIENTE).count()
+        context['documentos_pendientes'] = Documento.objects.filter(estado=EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION).count()
         return context
 
 
@@ -539,7 +542,8 @@ class SolicitanteDetailView(AgenteMixin, DetailView):
         requisitos = solicitante.requisitos.all()
         if requisitos.exists():
             total = requisitos.count()
-            aprobados = requisitos.filter(estado=ESTADO_DOCUMENTO_REVISADO).count()
+            #aprobados = requisitos.filter(estado=ESTADO_DOCUMENTO_REVISADO).count()
+            aprobados = requisitos.filter(estado=EstadoDocumento.DOCUMENTO_REVISADO_APROBADO).count()
             context['progreso_documentos'] = int((aprobados / total) * 100)
         else:
             context['progreso_documentos'] = 0
@@ -839,7 +843,8 @@ class AgenteDashboardView(AgenteMixin, TemplateView):
 
         # Documentos pendientes de revisión
         context['documentos_pendientes'] = Documento.objects.filter(
-            estado=ESTADO_DOCUMENTO_PENDIENTE
+            #estado=ESTADO_DOCUMENTO_PENDIENTE
+            estado=EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION
         ).select_related('requisito', 'requisito__solicitante').order_by('-creado_en')
 
         # Carpetas aprobadas pendientes de resultado de visa
@@ -893,7 +898,8 @@ class RevisarDocumentoView(AgenteMixin, View):
         documento = get_object_or_404(
             Documento,
             pk=documento_pk,
-            estado=ESTADO_DOCUMENTO_PENDIENTE
+            #estado=ESTADO_DOCUMENTO_PENDIENTE
+            estado=EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION
         )
         form = RevisionDocumentoForm()
 
@@ -915,7 +921,8 @@ class RevisarDocumentoView(AgenteMixin, View):
         documento = get_object_or_404(
             Documento,
             pk=documento_pk,
-            estado=ESTADO_DOCUMENTO_PENDIENTE
+            #estado=ESTADO_DOCUMENTO_PENDIENTE
+            estado=EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION
         )
         form = RevisionDocumentoForm(request.POST)
 

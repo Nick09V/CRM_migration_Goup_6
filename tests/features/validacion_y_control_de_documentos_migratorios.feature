@@ -11,12 +11,12 @@ Característica: Validación y control de documentos migratorios
 
   Escenario: Aprobación de un documento
     Cuando el agente marca como aprobado el documento
-    Entonces el documento queda marcado como "revisado" sin observaciones
+    Entonces el documento queda marcado como aprobado sin observaciones
     Y el solicitante es notificado de la aprobación
 
 
   Escenario: Rechazo de un documento
-    Cuando el agente rechaza el documento
+    Cuando el agente marca al documento como rechazado
     Y escribe las razones del rechazo
     Entonces el sistema notifica al solicitante las razones del rechazo
     Y se habilita la carga del documento

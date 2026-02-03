@@ -16,7 +16,7 @@ Característica: Gestión de documentos
     Dado que un solicitante de visa de "trabajo" no ha subido su "Pasaporte"
     Cuando sube el archivo "pasaporte_v1.pdf"
     Entonces el archivo se guarda como "Versión 1"
-    Y el estado del documento cambia a "Pendiente"
+    Y el documento queda pendiente para su revisión
 
 
   Esquema del escenario: Carga de un documento previamente rechazado
@@ -24,7 +24,7 @@ Característica: Gestión de documentos
     Y dicho documento ha sido rechazado
     Cuando el solicitante sube un documento
     Entonces el documento se guarda como versión <version_esperada>
-    Y el estado queda "pendiente"
+    Y el estado del documento se marca como pendiente para su revisión
 
     Ejemplos:
       | version_previa | version_esperada |

@@ -23,4 +23,4 @@ static_collected/
 # Logs y otros temporales
 *.log
 tmp/
-Documentos
+/Documentos/

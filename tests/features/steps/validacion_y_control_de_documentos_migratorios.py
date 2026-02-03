@@ -8,6 +8,7 @@ from migration.models import (
     Documento,
     ESTADO_DOCUMENTO_PENDIENTE,
     ESTADO_DOCUMENTO_FALTANTE,
+    EstadoDocumento
 )
 from migration.services.revision import (
     aprobar_documento,
@@ -59,7 +60,7 @@ def crear_documento_pendiente(
     documento = Documento.objects.create(
         requisito=requisito,
         version=version,
-        estado=ESTADO_DOCUMENTO_PENDIENTE,
+        estado=EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION,
         nombre_archivo=f"{nombre_requisito}_v{version}.pdf",
         ruta_archivo=f"Documentos/{solicitante.cedula}/trabajo/{nombre_requisito}/version_{version}/"
     )
@@ -89,8 +90,8 @@ def paso_documento_pendiente_por_revisar(context):
     )
 
     # Verificar que el documento está pendiente
-    assert context.documento.estado == ESTADO_DOCUMENTO_PENDIENTE, (
-        f"El documento debe estar pendiente, pero está en '{context.documento.estado}'"
+    assert context.documento.esta_documento_pendiente(), (
+        "El documento debe estar en estado pendiente"
     )
 
 
@@ -109,8 +110,8 @@ def paso_agente_aprueba_documento(context):
         context.resultado = None
 
 
-@then('el documento queda marcado como "{estado}" sin observaciones')
-def paso_documento_marcado_sin_observaciones(context, estado: str):
+@then('el documento queda marcado como aprobado sin observaciones')
+def paso_documento_marcado_sin_observaciones(context):
     """Verifica que el documento quedó marcado con el estado correcto sin observaciones."""
     assert context.error is None, f"No debería haber error: {context.error}"
     assert context.resultado is not None, "Debe existir un resultado"
@@ -119,9 +120,8 @@ def paso_documento_marcado_sin_observaciones(context, estado: str):
     # Refrescar documento desde BD
     context.documento.refresh_from_db()
 
-    estado_esperado = estado.lower()
-    assert context.documento.estado == estado_esperado, (
-        f"El estado debe ser '{estado_esperado}', pero es '{context.documento.estado}'"
+    assert context.documento.esta_documento_aprobado(), (
+        "El estado debe estar en estado aprobado"
     )
 
     # Verificar que no hay observaciones
@@ -150,7 +150,7 @@ def paso_solicitante_notificado_aprobacion(context):
 # ==================== Escenario 2: Rechazo de un documento ====================
 
 
-@when("el agente rechaza el documento")
+@when("el agente marca al documento como rechazado")
 def paso_agente_rechaza_documento(context):
     """El agente rechaza el documento pendiente."""
     context.error = None
@@ -208,9 +208,9 @@ def paso_habilita_carga_documento(context):
         "La carga del documento debe estar habilitada después del rechazo"
     )
 
-    # Verificar que el documento quedó como faltante
+    # Verificar que el documento quedó como rechazado
     context.documento.refresh_from_db()
-    assert context.documento.estado == ESTADO_DOCUMENTO_FALTANTE, (
+    assert context.documento.esta_documento_rechazado(), (
         f"El estado del documento debe ser 'faltante', "
         f"pero es '{context.documento.estado}'"
     )

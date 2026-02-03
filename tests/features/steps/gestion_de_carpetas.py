@@ -1,4 +1,3 @@
-
 import os
 import sys
 import django
@@ -22,6 +21,7 @@ from migration.models import (
     ESTADO_CARPETA_APROBADO,
     ESTADO_CARPETA_CERRADA_ACEPTADA,
     ESTADO_CARPETA_CERRADA_RECHAZADA,
+    EstadoDocumento
 )
 from migration.services.revision import (
     marcar_carpeta_aprobada,
@@ -92,7 +92,7 @@ def crear_documento_revisado(
     documento = Documento.objects.create(
         requisito=requisito,
         version=version,
-        estado=ESTADO_DOCUMENTO_REVISADO,
+        estado=EstadoDocumento.DOCUMENTO_REVISADO_APROBADO,
         nombre_archivo=f"{nombre_requisito}_v{version}.pdf",
         ruta_archivo=f"Documentos/{solicitante.cedula}/trabajo/{nombre_requisito}/version_{version}/"
     )
@@ -168,10 +168,10 @@ def paso_todos_documentos_aprobados(context):
     )
 
     # Verificar que los documentos están revisados
-    assert context.documento1.estado == ESTADO_DOCUMENTO_REVISADO, (
+    assert context.documento1.esta_documento_aprobado(), (
         "El documento 1 debe estar revisado"
     )
-    assert context.documento2.estado == ESTADO_DOCUMENTO_REVISADO, (
+    assert context.documento2.esta_documento_aprobado(), (
         "El documento 2 debe estar revisado"
     )
 

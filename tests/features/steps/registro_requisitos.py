@@ -8,6 +8,7 @@ from migration.models import (
     Agente,
     Cita,
     ESTADO_DOCUMENTO_FALTANTE,
+    EstadoDocumento
 )
 from migration.services.requisitos import (
     registrar_tipo_visa,
@@ -177,9 +178,8 @@ def paso_documentos_pendientes(context):
     # Verificar estado individual de cada requisito
     for requisito in context.requisitos:
         requisito.refresh_from_db()
-        assert requisito.estado == ESTADO_DOCUMENTO_FALTANTE, (
-            f"El requisito '{requisito.nombre}' debe estar en estado "
-            f"'{ESTADO_DOCUMENTO_FALTANTE}', pero está en '{requisito.estado}'"
+        assert requisito.esta_pendiente_de_subir(), (
+            f"El requisito {requisito.nombre} debe estar en estado pendiente por subir"
         )
         assert requisito.carga_habilitada, (
             f"La carga del requisito '{requisito.nombre}' debe estar habilitada"
