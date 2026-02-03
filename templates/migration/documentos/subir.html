@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Subir Documento - CRM Migración{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-upload me-2"></i>Subir Documento</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-arrow-up me-2"></i>{{ requisito.nombre|title }}
+            </div>
+            <div class="card-body">
+                <div class="alert alert-secondary mb-4">
+                    <p class="mb-1"><strong>Solicitante:</strong> {{ requisito.solicitante.nombre }}</p>
+                    <p class="mb-0"><strong>Requisito:</strong> {{ requisito.nombre|title }}</p>
+                </div>
+
+                {% if requisito.observaciones %}
+                <div class="alert alert-warning">
+                    <h6 class="alert-heading"><i class="bi bi-exclamation-circle me-2"></i>Observaciones del Agente</h6>
+                    <p class="mb-0">{{ requisito.observaciones }}</p>
+                </div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label for="id_archivo" class="form-label">{{ form.archivo.label }}</label>
+                        {{ form.archivo }}
+                        {% if form.archivo.errors %}
+                            <div class="text-danger small mt-1">{{ form.archivo.errors.0 }}</div>
+                        {% endif %}
+                        <small class="text-muted d-block mt-1">
+                            Formatos permitidos: PDF, JPG, JPEG, PNG, DOC, DOCX. Tamaño máximo: 10MB.
+                        </small>
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-2"></i>
+                        El documento será revisado por un agente. Recibirá notificación del resultado.
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'migration:solicitante_detalle' pk=requisito.solicitante.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-1"></i> Subir Documento
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>Instrucciones
+            </div>
+            <div class="card-body">
+                <h6>Recomendaciones:</h6>
+                <ul class="small">
+                    <li>Asegúrese de que el documento sea legible</li>
+                    <li>Verifique que la información sea correcta antes de subir</li>
+                    <li>Los documentos deben estar vigentes</li>
+                    <li>Suba el documento completo, no páginas individuales</li>
+                </ul>
+                <hr>
+                <h6>Estados posibles:</h6>
+                <ul class="list-unstyled small">
+                    <li><span class="badge status-badge status-pendiente">Pendiente</span> - En espera de revisión</li>
+                    <li><span class="badge status-badge status-revisado">Revisado</span> - Documento aprobado</li>
+                    <li><span class="badge status-badge status-faltante">Faltante</span> - Requiere corrección</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

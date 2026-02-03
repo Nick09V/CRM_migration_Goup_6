@@ -1136,6 +1136,9 @@ class ListaCitasView(AgenteMixin, ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset().select_related('solicitante', 'agente')
+        if hasattr(self.request.user, 'agente'):
+            queryset = queryset.filter(agente=self.request.user.agente)
+
         estado = self.request.GET.get('estado', '')
         if estado:
             queryset = queryset.filter(estado=estado)
