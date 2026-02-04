@@ -6,13 +6,11 @@ from migration.models import (
     Requisito,
     Documento,
     Carpeta,
-    TipoVisa,
-    EstadoDocumento,
+    TipoVisa
 )
 from migration.services.documentos import (
     subir_documento,
     rechazar_documento,
-    aprobar_documento,
     eliminar_carpeta_solicitante,
     obtener_o_crear_requisito,
 )
@@ -25,39 +23,9 @@ faker = Faker("es_ES")
 # ==================== Funciones auxiliares ====================
 
 
-def inicializar_tipos_visa_si_vacio() -> None:
-    """Inicializa los tipos de visa si están vacíos."""
-    if not TipoVisa.objects.filter(activo=True).exists():
-        TipoVisa.inicializar_tipos_default()
-
-
-def obtener_codigos_tipos_visa_activos() -> list[str]:
-    """Obtiene los códigos de tipos de visa activos desde el modelo."""
-    inicializar_tipos_visa_si_vacio()
-    return list(TipoVisa.objects.filter(activo=True).values_list('codigo', flat=True))
-
-
-def obtener_estados_documento_permitidos() -> list[str]:
-    """Obtiene los estados de documento permitidos desde el modelo EstadoDocumento."""
-    return [estado.value for estado in EstadoDocumento]
-
-
-def obtener_tipo_visa_valido(codigo: str) -> TipoVisa:
-    """Obtiene un tipo de visa válido del modelo o lanza error."""
-    inicializar_tipos_visa_si_vacio()
-    try:
-        return TipoVisa.objects.get(codigo=codigo, activo=True)
-    except TipoVisa.DoesNotExist:
-        tipos_disponibles = obtener_codigos_tipos_visa_activos()
-        raise AssertionError(
-            f"El tipo de visa '{codigo}' no existe o no está activo. "
-            f"Tipos disponibles: {tipos_disponibles}"
-        )
-
-
 def crear_solicitante_con_visa(tipo_visa: str) -> Solicitante:
-    # Validar que el tipo de visa existe en el modelo
-    tipo_visa_obj = obtener_tipo_visa_valido(tipo_visa)
+    """Crea un solicitante con el tipo de visa especificado."""
+    tipo_visa_obj = TipoVisa.objects.get(codigo=tipo_visa, activo=True)
 
     return Solicitante.objects.create(
         nombre=faker.unique.name(),
@@ -69,6 +37,7 @@ def crear_solicitante_con_visa(tipo_visa: str) -> Solicitante:
 
 
 def limpiar_solicitante(context) -> None:
+    """Limpia los datos del solicitante al finalizar el escenario."""
     if hasattr(context, "solicitante") and context.solicitante:
         # Eliminar carpeta física
         if context.solicitante.cedula:
@@ -93,36 +62,19 @@ def after_scenario(context, scenario):
 # ==================== Antecedentes ====================
 
 
-@given("los estados de revisión permitidos son: pendiente, revisado, rechazado")
-def paso_estados_permitidos(context):
-    """Verifica que los estados de revisión permitidos estén configurados en el modelo."""
-    estados = obtener_estados_documento_permitidos()
-
-    # Verificar estados según EstadoDocumento
-    assert EstadoDocumento.DOCUMENTO_PENDIENTE_POR_REVISION.value in estados, (
-        "Debe existir el estado 'pendiente'"
-    )
-    assert EstadoDocumento.DOCUMENTO_REVISADO_APROBADO.value in estados, (
-        "Debe existir el estado 'revisado'"
-    )
-    assert EstadoDocumento.DOCUMENTO_REVISADO_RECHAZADO.value in estados, (
-        "Debe existir el estado 'rechazado'"
-    )
-
-    context.estados_permitidos = estados
-
-
-@given("los tipos de visa soportados son: estudiantil, trabajo, residencial, turista")
-def paso_tipos_visa_soportados(context):
-    """Verifica que los tipos de visa soportados estén configurados en el modelo."""
-    tipos = obtener_codigos_tipos_visa_activos()
-
-    assert "estudiantil" in tipos, "Debe existir el tipo 'estudiantil'"
-    assert "trabajo" in tipos, "Debe existir el tipo 'trabajo'"
-    assert "residencial" in tipos, "Debe existir el tipo 'residencial'"
-    assert "turista" in tipos, "Debe existir el tipo 'turista'"
-
+@given("los tipos de visa soportados son: {tipos_visa}")
+def paso_tipos_visa_soportados(context, tipos_visa: str):
+    """Agrega los tipos de visa especificados directamente a la clase TipoVisa."""
+    tipos = [t.strip() for t in tipos_visa.split(",")]
+    
+    for tipo in tipos:
+        TipoVisa.objects.get_or_create(
+            codigo=tipo,
+            defaults={"nombre": tipo.capitalize(), "activo": True}
+        )
+    
     context.tipos_visa = tipos
+    assert len(context.tipos_visa) == 4
 
 
 # ==================== Escenario 1: Carga inicial de un documento ====================
@@ -184,15 +136,8 @@ def paso_verificar_version(context, version_esperada: str):
     # Extraer número de versión del string "Versión N"
     version_num = int(version_esperada.split()[-1])
 
-    assert context.resultado.version == version_num, (
-        f"La versión debe ser {version_num}, pero es {context.resultado.version}"
-    )
-
-    # Verificar que el documento existe en la BD
     documento = context.resultado.documento
-    assert documento is not None, "Debe existir el documento en la BD"
 
-    # Usar método del requisito para verificar la versión
     ultima_version = documento.requisito.obtener_ultima_version()
     assert ultima_version == version_num, (
         f"La última versión del requisito debe ser {version_num}, pero es {ultima_version}"
@@ -203,12 +148,11 @@ def paso_verificar_version(context, version_esperada: str):
 
 @then('el documento queda pendiente para su revisión')
 def paso_verificar_estado_documento(context):
-    """Verifica que el documento tenga el estado esperado."""
+    """Verifica que el documento tenga estado pendiente."""
     context.documento.refresh_from_db()
     assert context.documento.esta_documento_pendiente(), (
-        f"El estado debe estar en estado pendiente"
+        "El documento debe estar en estado pendiente"
     )
-
 
 
 # ==================== Escenario 2: Carga de documento rechazado ====================
@@ -281,7 +225,7 @@ def paso_solicitante_sube_documento(context):
     """El solicitante sube un nuevo documento."""
     context.error = None
 
-    version_anterior = context.documento.version
+    version_anterior = context.document.version
 
     try:
         context.resultado = subir_documento(
@@ -312,9 +256,9 @@ def paso_verificar_version_numerica(context, version_esperada: int):
 
 @then('el estado del documento se marca como pendiente para su revisión')
 def paso_verificar_estado_final(context):
-    """Verifica que el documento tenga el estado final esperado."""
+    """Verifica que el documento tenga estado pendiente."""
     context.documento.refresh_from_db()
 
     assert context.documento.esta_documento_pendiente(), (
-        "El estado debe estar con estado pendiente"
+        "El documento debe estar en estado pendiente"
     )

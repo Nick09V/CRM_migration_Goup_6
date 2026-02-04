@@ -465,7 +465,8 @@ class Requisito(models.Model):
             return True
 
         # Solo puede subir si el último fue rechazado
-        return documento_actual.estado == ESTADO_DOCUMENTO_FALTANTE
+        #return documento_actual.estado == ESTADO_DOCUMENTO_FALTANTE
+        return documento_actual.estado == EstadoDocumento.DOCUMENTO_REVISADO_RECHAZADO
 
     def habilitar_carga(self) -> None:
         """Habilita la carga de documentos para este requisito."""

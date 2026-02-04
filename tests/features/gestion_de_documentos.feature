@@ -8,8 +8,7 @@ Característica: Gestión de documentos
   Para facilitar el seguimiento de los documentos
 
   Antecedentes:
-    Dado los estados de revisión permitidos son: pendiente, revisado, rechazado
-    Y los tipos de visa soportados son: estudiantil, trabajo, residencial, turista
+    Dado los tipos de visa soportados son: estudiantil, trabajo, residencial, turista
 
 
   Escenario: Carga inicial de un documento

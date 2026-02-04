@@ -124,7 +124,8 @@ def obtener_o_crear_requisito(
         solicitante=solicitante,
         nombre=nombre_requisito,
         defaults={
-            "estado": ESTADO_DOCUMENTO_FALTANTE,
+            #"estado": ESTADO_DOCUMENTO_FALTANTE,
+            "estado": EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR,
             "carga_habilitada": True,
         }
     )
