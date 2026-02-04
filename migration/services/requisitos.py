@@ -141,7 +141,7 @@ def verificar_requisitos_pendientes(solicitante: Solicitante) -> bool:
     if not requisitos.exists():
         return False
 
-    return all(req.estado == EstadoDocumento.DOCUMENTO_PENDIENTE_POR_SUBIR for req in requisitos)
+    return all(req.esta_pendiente_de_subir() for req in requisitos)
 
 
 def obtener_catalogo_requisitos() -> list[CatalogoRequisito]:
