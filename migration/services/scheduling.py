@@ -61,6 +61,7 @@ class ResultadoCancelacion:
     mensaje: str
 
 
+
 def calcular_dias_restantes(cita: Cita) -> int:
     ahora = timezone.localtime(timezone.now())
     fecha_cita = timezone.localtime(cita.inicio)

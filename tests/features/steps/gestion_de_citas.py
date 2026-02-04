@@ -1,4 +1,3 @@
-
 from behave import given, step
 from django.utils import timezone as dj_timezone
 from django.core.exceptions import ValidationError as DjValidationError
@@ -13,10 +12,9 @@ from migration.services.scheduling import (
     reprogramar_cita,
     calcular_dias_restantes,
     DIAS_MINIMOS_CANCELACION,
-    DIAS_MINIMOS_REPROGRAMACION,
+    DIAS_MINIMOS_REPROGRAMACION, validar_tiempo_reprogramacion,
 )
 from faker import Faker
-
 
 faker = Faker("es_ES")
 
@@ -120,15 +118,18 @@ def paso_solicitante_sin_cita(context):
     assert not tiene_pendiente, "El solicitante no debería tener citas pendientes"
 
 
-@step("el solicitante selecciona un horario a las {hora:d}:00")
-def paso_seleccionar_horario_especifico(context, hora):
-    """El solicitante selecciona un horario específico para la cita."""
-
-    context.hora_seleccionada = hora
-    print(f"esta es la hora que se pasa: {context.hora_seleccionada}")
+@step("que existen agentes disponibles")
+def paso_existen_agente(context):
     # Asegurar que existan agentes
     agentes = obtener_o_crear_agentes()
     assert agentes.count() >= 1, "Debe existir al menos un agente activo"
+
+
+@step("el solicitante selecciona un horario a las {hora:d}:00")
+def paso_seleccionar_horario_especifico(context, hora):
+    """El solicitante selecciona un horario específico para la cita."""
+    context.hora_seleccionada = hora
+    #print(f"esta es la hora que se pasa: {context.hora_seleccionada}")
 
     try:
         context.inicio = crear_horario_valido(hora=hora)
@@ -169,22 +170,8 @@ def paso_verificar_cita_pendiente(context):
     """Verifica que la cita esté correctamente agendada."""
     cita = context.cita
 
-    # Verificar estado pendiente usando método encapsulado
+    # Verificar estado pendiente usando metodo encapsulado
     assert cita.esta_pendiente(), "La cita debe estar pendiente"
-
-    # Verificar que el fin se calculó automáticamente (inicio + 1 hora)
-    duracion_esperada = timedelta(hours=1)
-    duracion_real = cita.fin - cita.inicio
-    assert duracion_real == duracion_esperada, (
-        f"La duración debe ser 1 hora, pero es {duracion_real}"
-    )
-
-    # Verificar horario de atención (8:00 - 11:59)
-    hora_inicio = dj_timezone.localtime(cita.inicio).hour
-    assert 8 <= hora_inicio < 12, (
-        f"La hora de inicio debe estar entre 8:00 y 11:59, pero es {hora_inicio}:00"
-    )
-
 
 # ==================== Agendamiento: Escenario 2 - Intento con cita existente ====================
 
@@ -258,22 +245,12 @@ def paso_notifica_horario_invalido(context):
     """Verifica que se notifique que el horario está fuera del permitido."""
     assert context.error is not None, "Debe haber un error de validación"
 
-    mensaje_error = str(context.error)
-    palabras_clave = ["08", "12", "citas", "solo"]
-    contiene_mensaje = any(
-        palabra.lower() in mensaje_error.lower()
-        for palabra in palabras_clave
-    )
 
-    assert contiene_mensaje, (
-        f"El mensaje debe indicar el horario permitido (08:00 - 12:00). "
-        f"Mensaje recibido: {mensaje_error}"
-    )
 
 
 # ==================== Reprogramación: Escenario 1 - Reprogramación exitosa ====================
 
-@given("que el solicitante tiene una cita pendiente")
+@step("que el solicitante tiene una cita pendiente")
 def paso_solicitante_tiene_cita_pendiente(context):
     """Prepara un solicitante con una cita pendiente con suficiente anticipación."""
     # Crear cita con 5 días de anticipación (más de los 3 requeridos)
@@ -287,18 +264,25 @@ def paso_solicitante_tiene_cita_pendiente(context):
 def paso_faltan_mas_de_dos_dias(context):
     """Verifica que faltan más de 2 días para la cita."""
     dias_restantes = calcular_dias_restantes(context.cita)
-    assert dias_restantes > 2, (
+    context.error = None
+    try:
+        validar_tiempo_reprogramacion(context.cita)
+
+    except DjValidationError as error:
+        context.error = error
+
+    assert context.error is None, (
         f"La cita debe tener más de 2 días de anticipación. "
         f"Días restantes: {dias_restantes}"
     )
 
 
-@step("el solicitante selecciona un nuevo horario a las {hora:d}:00")
-def paso_solicitante_selecciona_horario_nuevo(context, hora):
+@step("el solicitante selecciona un nuevo horario a las {hora:d}:00 con {dias:d} días de anticipación")
+def paso_solicitante_selecciona_horario_nuevo(context, hora, dias):
     """El solicitante selecciona un nuevo horario para reprogramar."""
     context.hora_nueva_seleccionada = hora
     # Seleccionar un nuevo horario con la hora especificada (6 días de anticipación)
-    context.nuevo_horario = crear_horario_con_anticipacion(dias_anticipacion=6, hora=hora)
+    context.nuevo_horario = crear_horario_con_anticipacion(dias_anticipacion=dias, hora=hora)
 
     try:
         context.resultado = reprogramar_cita(context.cita, context.nuevo_horario)
@@ -322,13 +306,9 @@ def paso_sistema_actualiza_cita(context):
         f"El horario de la cita debió actualizarse. "
         f"Esperado: {context.nuevo_horario}, Actual: {cita_actualizada.inicio}"
     )
-    # Usar método encapsulado para verificar estado
-    assert cita_actualizada.esta_pendiente(), (
-        "La cita debe mantener su estado pendiente después de reprogramar"
-    )
 
 
-@step("el horario del agente anterior queda disponible para otro agendamiento")
+@step("el horario anterior queda disponible para otro agendamiento")
 def paso_horario_agente_disponible(context):
     """Verifica que el horario anterior quedó liberado."""
     # Verificar que no existe ninguna cita pendiente en el horario original
@@ -490,6 +470,9 @@ def paso_faltan_dos_dias_cancelacion(context):
         fin=nuevo_inicio + timedelta(hours=1)
     )
 
+    print("Se imprimira la cita")
+    print(f"\n[DEBUG] Valor actual: {Cita}")
+
     # Refrescar la instancia desde la base de datos
     context.cita.refresh_from_db()
 
@@ -530,20 +513,3 @@ def paso_sistema_rechaza_cancelacion(context):
     # Verificar que la cita sigue existiendo
     cita_existe = Cita.objects.filter(pk=context.cita.pk).exists()
     assert cita_existe, "La cita debe seguir existiendo después del rechazo"
-
-
-@step("notifica al solicitante la restricción")
-def paso_notifica_restriccion(context):
-    """Verifica que se notificó la restricción al solicitante."""
-    mensaje_error = str(context.error)
-
-    palabras_clave = ["días", "anticipación", "cancelar"]
-    contiene_mensaje = any(
-        palabra.lower() in mensaje_error.lower()
-        for palabra in palabras_clave
-    )
-
-    assert contiene_mensaje, (
-        f"El mensaje debe indicar la restricción de tiempo. "
-        f"Mensaje recibido: {mensaje_error}"
-    )

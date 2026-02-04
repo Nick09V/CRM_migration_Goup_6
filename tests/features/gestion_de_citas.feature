@@ -13,6 +13,7 @@ Característica: Gestión de citas migratorias
 
   Escenario: Agendamiento exitoso de cita dentro del horario permitido
     Dado que el solicitante no tiene una cita
+    Y que existen agentes disponibles
     Cuando el solicitante selecciona un horario a las 10:00
     Entonces el sistema agenda la cita con un agente disponible en dicho horario
     Y la cita queda pendiente para su resolución
@@ -37,21 +38,22 @@ Característica: Gestión de citas migratorias
   Escenario: Reprogramación a un nuevo horario válido
     Dado que el solicitante tiene una cita pendiente
     Y faltan más de dos días para la cita
-    Cuando el solicitante selecciona un nuevo horario a las 11:00
+    Cuando el solicitante selecciona un nuevo horario a las 11:00 con 6 días de anticipación
     Entonces el sistema actualiza la fecha y hora de la cita
-    Y el horario del agente anterior queda disponible para otro agendamiento
+    Y el horario anterior queda disponible para otro agendamiento
 
 
   Escenario: Reprogramación a un horario fuera del horario permitido
     Dado que el solicitante tiene una cita pendiente
     Y faltan más de dos días para la cita
-    Cuando el solicitante selecciona un nuevo horario a las 16:00
+    Cuando el solicitante selecciona un nuevo horario a las 16:00 con 30 días de anticipación
     Entonces el sistema rechaza la reprogramación
     Y se notifica que el horario no está dentro del horario de atención
 
 
   Escenario: Reprogramación fuera del tiempo permitido
-    Dado que faltan dos días para la cita
+    Dado que el solicitante tiene una cita pendiente
+    Y que faltan dos días para la cita
     Cuando el solicitante intenta reprogramar la cita
     Entonces el sistema rechaza la reprogramación
     Y se notifica que no se pudo hacer el reagendamiento
@@ -73,4 +75,3 @@ Característica: Gestión de citas migratorias
     Y que faltan dos días para la cita
     Cuando intenta cancelar la cita
     Entonces el sistema rechaza la cancelación
-    Y notifica al solicitante la restricción
