@@ -225,7 +225,7 @@ def paso_solicitante_sube_documento(context):
     """El solicitante sube un nuevo documento."""
     context.error = None
 
-    version_anterior = context.document.version
+    version_anterior = context.documento.version
 
     try:
         context.resultado = subir_documento(
