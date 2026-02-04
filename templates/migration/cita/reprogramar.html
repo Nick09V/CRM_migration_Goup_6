@@ -65,7 +65,7 @@
                         {% if form.fecha.errors %}
                             <div class="text-danger small mt-1">{{ form.fecha.errors.0 }}</div>
                         {% endif %}
-                        <small class="text-muted">Solo días laborales (lunes a sábado), máximo 2 semanas.</small>
+                        <small class="text-muted">Solo días laborales (lunes a sábado).</small>
                     </div>
 
                     <div class="mb-3">
@@ -76,12 +76,12 @@
                         {% if form.hora.errors %}
                             <div class="text-danger small mt-1">{{ form.hora.errors.0 }}</div>
                         {% endif %}
-                        <small class="text-muted">Horario de atención: 08:00 - 12:00</small>
+                        <small class="text-muted">Horario de atención: {{ horario_inicio}} - {{ horario_fin}}</small>
                     </div>
 
                     <div class="alert alert-info small">
                         <i class="bi bi-info-circle me-2"></i>
-                        <strong>Nota:</strong> Las reprogramaciones deben realizarse con al menos 3 días de anticipación.
+                        <strong>Nota:</strong> Las reprogramaciones deben realizarse con al menos {{ dias_reprogramacion }} días de anticipación.
                         Se asignará un agente disponible para el nuevo horario.
                         No se pueden reprogramar citas a fechas y horarios anteriores a la hora actual.
                     </div>

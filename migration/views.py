@@ -23,14 +23,14 @@ from .models import (
     TipoVisa,
     CatalogoRequisito,
     TIPOS_VISA,
-    #ESTADO_DOCUMENTO_PENDIENTE,
-    #ESTADO_DOCUMENTO_REVISADO,
-    #ESTADO_DOCUMENTO_FALTANTE,
+    # ESTADO_DOCUMENTO_PENDIENTE,
+    # ESTADO_DOCUMENTO_REVISADO,
+    # ESTADO_DOCUMENTO_FALTANTE,
     ESTADO_CARPETA_APROBADO,
     ESTADO_CARPETA_CERRADA_ACEPTADA,
     ESTADO_CARPETA_CERRADA_RECHAZADA,
     REQUISITOS_POR_VISA,
-    EstadoDocumento
+    EstadoDocumento, MAXIMO_SEMANAS_ANTICIPACION, HORA_INICIO_ATENCION, HORA_FIN_ATENCION
 )
 
 from .forms import (
@@ -55,7 +55,7 @@ from .services.scheduling import (
     SolicitudAgendamiento,
     agendar_cita,
     cancelar_cita,
-    reprogramar_cita, DIAS_MINIMOS_CANCELACION,
+    reprogramar_cita, DIAS_MINIMOS_CANCELACION, DIAS_MINIMOS_REPROGRAMACION,
 )
 from .services.documentos import (
     subir_documento,
@@ -597,7 +597,11 @@ class CitaAgendarView(LoginRequiredMixin, View):
         form = AgendarCitaForm()
         return render(request, self.template_name, {
             'form': form,
-            'solicitante': solicitante
+            'solicitante': solicitante,
+            "dias_cancelacion": DIAS_MINIMOS_CANCELACION,
+            "semanas_atencion": MAXIMO_SEMANAS_ANTICIPACION,
+            "hora_inicio": HORA_INICIO_ATENCION,
+            "hora_fin": HORA_FIN_ATENCION,
         })
 
     def post(self, request, solicitante_pk):
@@ -659,7 +663,10 @@ class CitaReprogramarView(LoginRequiredMixin, View):
         form = ReprogramarCitaForm()
         return render(request, self.template_name, {
             'form': form,
-            'cita': cita
+            'cita': cita,
+            "dias_reprogramacion": DIAS_MINIMOS_REPROGRAMACION,
+            "hora_inicio": HORA_INICIO_ATENCION,
+            "hora_fin": HORA_FIN_ATENCION,
         })
 
     def post(self, request, cita_pk):

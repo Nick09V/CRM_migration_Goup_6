@@ -8,8 +8,8 @@ from django.core.exceptions import ValidationError
 from migration.models import Agente, Cita, Solicitante
 
 #reglas de negocio
-DIAS_MINIMOS_CANCELACION = 4
-DIAS_MINIMOS_REPROGRAMACION = 8
+DIAS_MINIMOS_CANCELACION = 0
+DIAS_MINIMOS_REPROGRAMACION = 5
 
 
 @dataclass
