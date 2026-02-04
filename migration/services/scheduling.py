@@ -7,9 +7,9 @@ from django.core.exceptions import ValidationError
 
 from migration.models import Agente, Cita, Solicitante
 
-# Constantes de reglas de negocio
-DIAS_MINIMOS_CANCELACION = 3
-DIAS_MINIMOS_REPROGRAMACION = 3
+#reglas de negocio
+DIAS_MINIMOS_CANCELACION = 4
+DIAS_MINIMOS_REPROGRAMACION = 8
 
 
 @dataclass
@@ -59,6 +59,7 @@ class ResultadoCancelacion:
     """Representa el resultado de un intento de cancelación."""
     exitoso: bool
     mensaje: str
+    dias_minimos: int = DIAS_MINIMOS_CANCELACION
 
 
 
@@ -68,22 +69,22 @@ def calcular_dias_restantes(cita: Cita) -> int:
     return (fecha_cita.date() - ahora.date()).days
 
 
-def validar_tiempo_cancelacion(cita: Cita) -> None:
+def validar_tiempo_cancelacion(cita: Cita) -> bool:
     dias_restantes = calcular_dias_restantes(cita)
 
     if dias_restantes < DIAS_MINIMOS_CANCELACION:
-        raise ValidationError(
-            f"No se puede cancelar la cita. Las cancelaciones deben realizarse "
-            f"con al menos {DIAS_MINIMOS_CANCELACION} días de anticipación. "
-            f"Faltan solo {dias_restantes} días para su cita."
-        )
-
+        return False
+    return True
 
 def cancelar_cita(cita: Cita) -> ResultadoCancelacion:
     if cita.estado != Cita.ESTADO_PENDIENTE:
         raise ValidationError("Solo se pueden cancelar citas pendientes.")
 
-    validar_tiempo_cancelacion(cita)
+    if validar_tiempo_cancelacion(cita) is False:
+        raise ValidationError(
+            f"No se puede cancelar la cita. Las cancelaciones deben realizarse "
+            f"con al menos {DIAS_MINIMOS_CANCELACION} días de anticipación."
+        )
 
     # Eliminar la cita para liberar el horario
     cita.delete()
@@ -105,15 +106,12 @@ class ResultadoReprogramacion:
     cita: Cita | None = None
 
 
-def validar_tiempo_reprogramacion(cita: Cita) -> None:
+def validar_tiempo_reprogramacion(cita: Cita) -> bool:
     dias_restantes = calcular_dias_restantes(cita)
 
     if dias_restantes < DIAS_MINIMOS_REPROGRAMACION:
-        raise ValidationError(
-            f"No se puede reprogramar la cita. Las reprogramaciones deben realizarse "
-            f"con al menos {DIAS_MINIMOS_REPROGRAMACION} días de anticipación. "
-            f"Faltan solo {dias_restantes} días para su cita."
-        )
+        return False
+    return True
 
 
 def validar_cita_pendiente(cita: Cita) -> None:
@@ -126,7 +124,10 @@ def reprogramar_cita(cita: Cita, nuevo_inicio: datetime) -> ResultadoReprogramac
     validar_cita_pendiente(cita)
 
     # Validar tiempo mínimo de anticipación
-    validar_tiempo_reprogramacion(cita)
+    if validar_tiempo_reprogramacion(cita) is False:
+        raise ValidationError(f"No se puede reprogramar la cita. Las reprogramaciones deben realizarse "
+            f"con al menos {DIAS_MINIMOS_REPROGRAMACION} días de anticipación.")
+
 
     # Buscar agente disponible para el nuevo horario
     agente_disponible = buscar_agente_disponible(nuevo_inicio)

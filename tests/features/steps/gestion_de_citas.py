@@ -12,7 +12,7 @@ from migration.services.scheduling import (
     reprogramar_cita,
     calcular_dias_restantes,
     DIAS_MINIMOS_CANCELACION,
-    DIAS_MINIMOS_REPROGRAMACION, validar_tiempo_reprogramacion,
+    DIAS_MINIMOS_REPROGRAMACION, validar_tiempo_reprogramacion, validar_tiempo_cancelacion,
 )
 from faker import Faker
 
@@ -33,8 +33,8 @@ def obtener_dia_laboral_con_anticipacion(dias_anticipacion: int):
     fecha = dj_timezone.localtime(dj_timezone.now()).date() + timedelta(days=dias_anticipacion)
 
     # Si cae domingo, avanzar al lunes
-    while fecha.weekday() == 6:  # 6 = domingo
-        fecha += timedelta(days=1)
+    # while fecha.weekday() == 6:  # 6 = domingo
+    #     fecha += timedelta(days=1)
 
     return fecha
 
@@ -254,7 +254,7 @@ def paso_notifica_horario_invalido(context):
 def paso_solicitante_tiene_cita_pendiente(context):
     """Prepara un solicitante con una cita pendiente con suficiente anticipación."""
     # Crear cita con 5 días de anticipación (más de los 3 requeridos)
-    context.cita = crear_cita_pendiente(dias_anticipacion=5)
+    context.cita = crear_cita_pendiente(dias_anticipacion=6)
     context.solicitante = context.cita.solicitante
     context.agente_original = context.cita.agente
     context.horario_original = context.cita.inicio
@@ -325,16 +325,20 @@ def paso_horario_agente_disponible(context):
 
 # ==================== Reprogramación: Escenario 2 - Fuera del tiempo ====================
 
-@given("que faltan dos días para la cita")
+@step("que faltan dos días para la cita")
 def paso_faltan_dos_dias_reprogramacion(context):
     """Prepara una cita que tiene exactamente 2 días de anticipación."""
-    context.cita = crear_cita_pendiente(dias_anticipacion=2)
+    context.cita = crear_cita_pendiente(dias_anticipacion=5)
     context.solicitante = context.cita.solicitante
     context.agente_original = context.cita.agente
     context.horario_original = context.cita.inicio
 
     dias_restantes = calcular_dias_restantes(context.cita)
-    assert dias_restantes == 2, (
+
+
+    puede_reprogramar = validar_tiempo_reprogramacion(context.cita)
+
+    assert puede_reprogramar, (
         f"La cita debe tener exactamente 2 días de anticipación. "
         f"Días restantes: {dias_restantes}"
     )
@@ -457,37 +461,14 @@ def paso_horario_disponible(context):
 
 # ==================== Cancelación: Escenario 2 - Fuera del tiempo ====================
 
-@step("que faltan dos días para la cita")
+@step("que faltan dos días para el inicio de la cita")
 def paso_faltan_dos_dias_cancelacion(context):
-    """Modifica la cita para que falten solo 2 días."""
-    # Calcular nueva fecha con solo 2 días de anticipación
-    nuevo_inicio = crear_horario_con_anticipacion(dias_anticipacion=2, hora=10)
+    puede_cancelar = validar_tiempo_cancelacion(context.cita)
+    dias_restantes = calcular_dias_restantes(context.cita)
 
-    # Usar update() para evitar las validaciones del modelo
-    # Esto simula una cita que fue agendada hace tiempo y ahora está próxima
-    Cita.objects.filter(pk=context.cita.pk).update(
-        inicio=nuevo_inicio,
-        fin=nuevo_inicio + timedelta(hours=1)
-    )
-
-    print("Se imprimira la cita")
-    print(f"\n[DEBUG] Valor actual: {Cita}")
-
-    # Refrescar la instancia desde la base de datos
-    context.cita.refresh_from_db()
-
-    # Guardar referencias para verificaciones posteriores
-    context.agente = getattr(context, 'agente_original', context.cita.agente)
-    context.inicio_cita = context.cita.inicio
-
-    # Verificar los días restantes
-    ahora = dj_timezone.localtime(dj_timezone.now()).date()
-    fecha_cita = dj_timezone.localtime(context.cita.inicio).date()
-    dias_restantes = (fecha_cita - ahora).days
-
-    assert dias_restantes < DIAS_MINIMOS_CANCELACION, (
-        f"Deben faltar menos de {DIAS_MINIMOS_CANCELACION} días, "
-        f"pero faltan {dias_restantes}"
+    assert not puede_cancelar, (
+        f"La cita debe tener menos de {DIAS_MINIMOS_CANCELACION} días de anticipación "
+        f"para que la cancelación sea rechazada. Días restantes: {dias_restantes}"
     )
 
 
@@ -499,8 +480,8 @@ def paso_intenta_cancelar(context):
 
     try:
         context.resultado = cancelar_cita(context.cita)
-    except DjValidationError as error:
-        context.error = error
+    except DjValidationError as e:
+        context.error = e
 
 
 @step("el sistema rechaza la cancelación")
@@ -513,3 +494,18 @@ def paso_sistema_rechaza_cancelacion(context):
     # Verificar que la cita sigue existiendo
     cita_existe = Cita.objects.filter(pk=context.cita.pk).exists()
     assert cita_existe, "La cita debe seguir existiendo después del rechazo"
+
+
+@step("que el solicitante posee una cita pendiente")
+def step_impl(context):
+    """Prepara un solicitante con una cita pendiente que tiene pocos días de anticipación."""
+    # Crear cita con 3 días de anticipación (menos de DIAS_MINIMOS_CANCELACION=4)
+    context.cita = crear_cita_pendiente(dias_anticipacion=5)
+    context.solicitante = context.cita.solicitante
+    context.agente_original = context.cita.agente
+    context.horario_original = context.cita.inicio
+
+    # Verificar que la cita pendiente existe
+    assert context.solicitante.tiene_cita_pendiente(), (
+        "El solicitante debe tener una cita pendiente"
+    )

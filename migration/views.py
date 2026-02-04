@@ -55,7 +55,7 @@ from .services.scheduling import (
     SolicitudAgendamiento,
     agendar_cita,
     cancelar_cita,
-    reprogramar_cita,
+    reprogramar_cita, DIAS_MINIMOS_CANCELACION,
 )
 from .services.documentos import (
     subir_documento,
@@ -634,7 +634,7 @@ class CitaCancelarView(LoginRequiredMixin, View):
 
     def get(self, request, cita_pk):
         cita = get_object_or_404(Cita, pk=cita_pk, estado=Cita.ESTADO_PENDIENTE)
-        return render(request, self.template_name, {'cita': cita})
+        return render(request, self.template_name, {'cita': cita, "dias_disponibles": DIAS_MINIMOS_CANCELACION})
 
     def post(self, request, cita_pk):
         cita = get_object_or_404(Cita, pk=cita_pk, estado=Cita.ESTADO_PENDIENTE)
@@ -642,7 +642,7 @@ class CitaCancelarView(LoginRequiredMixin, View):
 
         try:
             resultado = cancelar_cita(cita)
-            messages.success(request, resultado.mensaje)
+            messages.success(request, resultado.mensaje, resultado.dias_minimos)
         except ValidationError as e:
             messages.error(request, str(e.message))
 

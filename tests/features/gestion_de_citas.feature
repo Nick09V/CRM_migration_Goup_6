@@ -71,7 +71,7 @@ Característica: Gestión de citas migratorias
 
 
   Escenario: Cancelación fuera del tiempo permitido
-    Dado que el solicitante tiene una cita pendiente
-    Y que faltan dos días para la cita
+    Dado que el solicitante posee una cita pendiente
+    Y que faltan dos días para el inicio de la cita
     Cuando intenta cancelar la cita
     Entonces el sistema rechaza la cancelación

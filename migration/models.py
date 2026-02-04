@@ -9,7 +9,7 @@ HORA_INICIO_ATENCION = 8
 HORA_FIN_ATENCION = 12
 DURACION_CITA_HORAS = 1
 MAXIMO_SEMANAS_ANTICIPACION = 2
-DIAS_LABORALES = [0, 1, 2, 3, 4, 5]  # Lunes a Sábado
+DIAS_LABORALES = [0, 1, 2, 3, 4, 5, 6]  # Lunes a Sábado
 
 # Tipos de visa soportados (constantes para compatibilidad)
 TIPO_VISA_ESTUDIANTIL = "estudiantil"
