@@ -11,11 +11,18 @@ Característica: Gestión de citas migratorias
 
   # ==================== Agendamiento de citas ====================
 
-  Escenario: Agendamiento exitoso de cita
+  Escenario: Agendamiento exitoso de cita dentro del horario permitido
     Dado que el solicitante no tiene una cita
-    Cuando el solicitante selecciona un horario
+    Cuando el solicitante selecciona un horario a las 10:00
     Entonces el sistema agenda la cita con un agente disponible en dicho horario
     Y la cita queda pendiente para su resolución
+
+
+  Escenario: Intento de agendar una cita fuera del horario permitido
+    Dado que el solicitante no tiene una cita
+    Cuando el solicitante selecciona un horario a las 15:00
+    Entonces el sistema rechaza el agendamiento
+    Y se le notifica que las citas solo se permiten entre las 08:00 y 12:00
 
 
   Escenario: Intento de agendar con cita existente
@@ -27,12 +34,20 @@ Característica: Gestión de citas migratorias
 
   # ==================== Reprogramación de citas ====================
 
-  Escenario: Reprogramación a un nuevo horario dentro del tiempo disponible
+  Escenario: Reprogramación a un nuevo horario válido
     Dado que el solicitante tiene una cita pendiente
     Y faltan más de dos días para la cita
-    Cuando el solicitante selecciona un nuevo horario disponible
+    Cuando el solicitante selecciona un nuevo horario a las 11:00
     Entonces el sistema actualiza la fecha y hora de la cita
     Y el horario del agente anterior queda disponible para otro agendamiento
+
+
+  Escenario: Reprogramación a un horario fuera del horario permitido
+    Dado que el solicitante tiene una cita pendiente
+    Y faltan más de dos días para la cita
+    Cuando el solicitante selecciona un nuevo horario a las 16:00
+    Entonces el sistema rechaza la reprogramación
+    Y se notifica que el horario no está dentro del horario de atención
 
 
   Escenario: Reprogramación fuera del tiempo permitido
@@ -46,6 +61,7 @@ Característica: Gestión de citas migratorias
 
   Escenario: Cancelación exitosa de cita
     Dado que el solicitante tiene una cita pendiente
+    Y faltan más de dos días para la cita
     Cuando solicita cancelar la cita
     Entonces el sistema elimina la cita
     Y el solicitante queda sin cita asignada
